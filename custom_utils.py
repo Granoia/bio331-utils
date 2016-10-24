@@ -29,7 +29,7 @@ def parse_input(edgefile, delimiter, isDirected=False, isWeighted=False):
     for e in edge_set:
         edges.append(set_to_list(e))
     
-    g = Graph(nodes, edges)
+    g = Graph(nodes, edges, isDirected, isWeighted)
 
     return g, nodes, edges
 
@@ -81,10 +81,10 @@ class Graph:
 '''
 
 class Graph:
-"""
-This class will provide all the planned functionality. The basic idea is to be able to scale a given visual attribute (on graphspace) by a given data attribute as easily as possible without loss of customization power.
-We do this by keeping a directory of data attributes which can be updated by the user on the fly. Additionally, a basic adjacency list method is included if a user doesn't want to deal with the hassle of learning my framework.
-"""
+    """
+    This class will provide all the planned functionality. The basic idea is to be able to scale a given visual attribute (on graphspace) by a given data attribute as easily as possible without loss of customization power.
+    We do this by keeping a directory of data attributes which can be updated by the user on the fly. Additionally, a basic adjacency list method is included if a user doesn't want to deal with the hassle of learning my framework.
+    """
 
     def __init__(self, nodes, edges, isDirected=False, isWeighted=False):
         self.isDirected = isDirected
@@ -124,10 +124,10 @@ We do this by keeping a directory of data attributes which can be updated by the
 
         for e in self.naive_edges:
             if not self.isDirected:
-                d[e[0]] = e[1]
-                d[e[1]] = e[0]
+                d[e[0]].append(e[1])
+                d[e[1]].append(e[0])
             else:
-                d[e[0]] = e[1]
+                d[e[0]].append(e[1])
         return d
                 
             
