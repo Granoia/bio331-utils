@@ -1,4 +1,6 @@
 #customized utils
+import math
+
 
 def parse_input(edgefile, delimiter, isDirected=False, isWeighted=False):
     """
@@ -83,15 +85,17 @@ class Graph:
 class Graph:
     """
     This class will provide all the planned functionality. The basic idea is to be able to scale a given visual attribute (on graphspace) by a given data attribute as easily as possible without loss of customization power.
-    We do this by keeping a directory of data attributes which can be updated by the user on the fly. Additionally, a basic adjacency list method is included if a user doesn't want to deal with the hassle of learning my framework.
+    We do this by keeping a directory of data attributes which can be updated by the user on the fly. (Though the directory kept in the Graph object is mostly superficial at the moment. The Node class does all of the heavy lifting when it comes to actually enforcing the directory rules.)
+    Additionally, a basic adjacency list method is included if a user doesn't want to deal with the hassle of learning my framework.
+    Now has a working method normNodeAttr() that returns a normalized dictionary for any node attribute. Pretty snazzy.
     """
 
     def __init__(self, nodes, edges, isDirected=False, isWeighted=False):
         self.isDirected = isDirected
         self.isWeighted = isWeighted
 
-        self.working_node_dir = set()
-        self.working_edge_dir = set()
+        self.node_dir = set()
+        self.edge_dir = set()
         self.naive_nodes = nodes
         self.naive_edges = edges
         
@@ -99,8 +103,13 @@ class Graph:
         self.edges = self.init_edges(edges)
 
     def init_nodes(self,nodes):
+        node_ls = []
+        for n in nodes:
+            node_ls.append(Node(n))
+        node_ls.sort(key=lambda x: x.get('ID'))    #sorts the node list by ID
+            
         self.init_node_dir()
-        pass
+        return node_ls
     
 
     def init_edges(self,edges):
@@ -108,13 +117,65 @@ class Graph:
         pass
 
     def init_node_dir(self):
-        pass
+        self.node_dir.add('ID')
 
     def init_edge_dir(self):
         pass
     
     def __dir__(self):
-        return (self.working_node_dir, self.working_edge_dir)
+        return [set_to_list(self.node_dir), set_to_list(self.edge_dir)]
+
+
+    def newNodeAttr(self,attrName,loud=False):
+        #helper function for installNodeAttr
+        #installs attrName in the directory of each node in the graph.
+        for n in self.nodes:
+            n.newAttr(attrName,loud)
+        self.node_dir.add(attrName)
+
+    
+    def putNodeAttrs(self,attrName, attrDict, loud=False):
+        #helper function for installNodeAttr
+        #give a dictionary whose keys are node IDs and whose values are the values for the desired attribute as attrDict
+        #this function uses put() to update the values of the given attribute for each node.
+        for n in self.nodes:
+            n.put(attrName,attrDict[n.get('ID')],loud)
+
+
+    def installNodeAttr(self, attrName, attrDict, loud=False):
+        #this method works a new attribute into the dynamic framework of the Node class
+        #give the desired name of the new attribute, along with a dictionary whose keys are node IDs and whose values are the values for the new attribute
+        #run this method and all the nodes in the graph will now have that attribute and the associated value from the dictionary.
+        self.newNodeAttr(attrName, loud)
+        self.putNodeAttrs(attrName, attrDict, loud)
+    
+
+    def normNodeAttr(self,attrName,loud=False):
+        #normalizes the values for the given node attribute and returns the normalized values as a dictionary
+        d = {}
+        for n in self.nodes:
+            d[n.get('ID')] = float('nan')
+
+        for n in self.nodes:
+            if n.get(attrName,loud) != None:
+                a_max = n.get(attrName,loud)
+                max_node = n
+                break
+        else:
+            raise TypeError('Could not normalize by attribute ' + str(attrName) + 'because all nodes have None for that attribute.')
+
+        for n in self.nodes:
+            if n.get(attrName,loud) != None and n.get(attrName,loud) > a_max:
+                a_max = n.get(attrName,loud)
+                max_node = n
+
+        for n in self.nodes:
+            if n.get(attrName,loud) != None:
+                d[n.get('ID')] = n.get(attrName,loud)/float(a_max)
+
+        return d
+
+
 
     def get_adj_ls(self):
         #returns a naive adjacency list based on the data given by parse_input()
@@ -167,7 +228,7 @@ class Node:
     def newAttr(self, attrName,loud=False):
         #installs a new attribute in the directory for recognition by the put() and get() methods.
         #uses a set to avoid adding the same attribute multiple times (prints a warning when this happens if loud=True)
-        if loud and (attrName in dir_set):
+        if loud and (attrName in self.dir_set):
             print("Warning! Attempting to add a new attribute " + str(attrName) + " to node " + str(self.get('ID')) + " but that attribute already exists in the directory.")
             
         self.dir_set.add(attrName)
