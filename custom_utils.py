@@ -346,7 +346,7 @@ class Graph:
             e_ls.append([e.get('source'), e.get('target')])
         
         data = json_utils.make_json_data(n_ls, e_ls, self.GSnodeAttrs, self.GSedgeAttrs, title, desc, tags)
-        js_utils.write_json(data,json_filename)
+        json_utils.write_json(data,json_filename)
         graphspace_utils.postGraph(graphID, json_filename, user, pw)
         
 
