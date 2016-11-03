@@ -163,9 +163,8 @@ class Graph:
     def init_edge_dir(self):
         self.edge_dir.add('nodes')
         self.edge_dir.add('ID')
-        if self.isDirected:
-            self.edge_dir.add('source')
-            self.edge_dir.add('target')
+        self.edge_dir.add('source')
+        self.edge_dir.add('target')
         if self.isWeighted:
             self.edge_dir.add('weight')
     
@@ -184,7 +183,7 @@ class Graph:
     
     
     #########################################################
-    #DATA INPUT METHODS######################################
+    #DATA INPUT/RETRIEVAL METHODS############################
     #########################################################
     
     def installNodeAttr(self, attrName, attrDict, loud=False):
@@ -199,7 +198,8 @@ class Graph:
         self.newEdgeAttr(attrName, loud)
         self.putEdgeAttrs(attrName, attrDict, loud)
     
-    
+    def getAttr(self, attrName, n_or_e, loud=False):
+        pass
     
     
     
@@ -333,7 +333,7 @@ class Node:
     def put(self, attrName,val,loud=False):
         #inputs a value for an existing attribute
         if attrName not in dir(self):
-            raise NameError('Node object contains no attribute called ' + str(attrName))
+            raise NameError(str(self.__class__.__name__) + ' object contains no attribute called ' + str(attrName))
         else:
             self.d[attrName] = val
 
@@ -341,10 +341,10 @@ class Node:
         #gets a value for an existing attribute
         #if the attribute exists in the directory, but no value has been put, returns None (prints a warning if the loud argument is True)
         if attrName not in dir(self):
-            raise NameError('Node object contains no attribute called ' + str(attrName))
+            raise NameError(str(self.__class__.__name__) +' object contains no attribute called ' + str(attrName))
         elif attrName not in self.d:
             if loud:
-                print("Warning! Attempting to get() attribute " + str(attrName) + " value from node " + str(self.get('ID')) + ". A value for this attribute has not been set. (returns None)")
+                print("Warning! Attempting to get() attribute " + str(attrName) + " value from " + str(self.__class__.__name__) + " " + str(self.get('ID')) + ". A value for this attribute has not been set. (returns None)")
             return None
         else:
             return self.d[attrName]
@@ -354,7 +354,7 @@ class Node:
         #installs a new attribute in the directory for recognition by the put() and get() methods.
         #uses a set to avoid adding the same attribute multiple times (prints a warning when this happens if loud=True)
         if loud and (attrName in self.dir_set):
-            print("Warning! Attempting to add a new attribute " + str(attrName) + " to node " + str(self.get('ID')) + " but that attribute already exists in the directory.")
+            print("Warning! Attempting to add a new attribute " + str(attrName) + " to " + str(self.__class__.__name__) + " " + str(self.get('ID')) + " but that attribute already exists in the directory.")
             
         self.dir_set.add(attrName)
 
