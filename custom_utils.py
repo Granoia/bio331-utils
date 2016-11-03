@@ -201,12 +201,12 @@ class Graph:
     def getAttr(self, attrName, n_or_e, loud=False):
         #returns a dictionary whose keys are IDs and whose values are values of the given attribute
         d = {}
-        if n_or_e = 'n':
+        if n_or_e == 'n':
             working_group = self.nodes
-        elif n_or_e = 'e':
+        elif n_or_e == 'e':
             working_group = self.edges
         else:
-            raise raise NameError('n_or_e must be either \'n\' for nodes or \'e\' for edges.')
+            raise NameError('n_or_e must be either \'n\' for nodes or \'e\' for edges.')
         
         for x in working_group:
             d[x.get('ID',loud)] = x.get(attrName,loud)
