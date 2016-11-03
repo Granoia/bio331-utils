@@ -108,6 +108,10 @@ class Graph:
         
         self.GSnodeAttrs = self.initGSnodeAttrs()
         self.GSedgeAttrs = self.initGSedgeAttrs()
+        
+        self.GStitle = None
+        self.GSdesc = None
+        self.GStags = None
 
     def __dir__(self):
         return [set_to_list(self.node_dir), set_to_list(self.edge_dir)]
@@ -320,6 +324,30 @@ class Graph:
                 attrs[s][t][GSattr] = edgeAttrDict[s][t]
         self.GSedgeAttrs = attrs
 
+    def uploadGraph(self, title=None, graphID=None, desc=None, tags=None):
+        json_filename = 'graphspace_upload.json'
+        user = input("Graphspace username: ")
+        pw = input("Graphspace password: ")
+        if title == None and self.GStitle == None:
+            title = input("Graph title: ")
+        if graphID == None:
+            graphID = input("Graph ID: ")
+        if desc == None and self.GSdesc == None:
+            desc = input("Graph description: ")
+        if tags == None and self.GStags == None:
+            tag_str = input("Graph tags (separated by comma): ")
+            tags = tag_str.strip().split(',')
+        
+        n_ls = [x.get('ID') for x in self.nodes]
+        
+        e_ls = []
+        for e in self.edges:
+            e_ls.append([e.get('source'), e.get('target')])
+        
+        data = json_utils.make_json_data(n_ls, e_ls, self.GSnodeAttrs, self.GSedgeAttrs, title, desc, tags)
+        js_utils.write_json(data,json_filename)
+        graphspace_utils.postGraph(graphID, json_filename, user, pw)
+        
 
 class Node:
     #node class for the graph with attributes that can be dynamically updated by a user(!)
