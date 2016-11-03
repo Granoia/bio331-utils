@@ -153,7 +153,7 @@ class Graph:
             if self.isWeighted and self.isDirected:
                 edge_ls.append(Edge(e[0],e[1],e[2],directed=True))
             elif self.isWeighted:
-                edge_ls.append(Edge(e[0],e[1],e[2])
+                edge_ls.append(Edge(e[0],e[1],e[2]))
             elif (not self.isWeighted) and self.isDirected:
                 edge_ls.append(Edge(e[0],e[1],directed=True))
             else:
@@ -236,9 +236,9 @@ class Graph:
     def normByAttr(self, attrName, n_or_e='n', loud=False):
         #generalized version of normNodeAttr() but I haven't tested it yet so I'm keeping normNodeAttr() around until then
         d = {}
-        if n_or_e = 'n':
+        if n_or_e == 'n':
             working_group = self.nodes
-        elif n_or_e = 'e':
+        elif n_or_e == 'e':
             working_group = self.edges
         else:
             raise NameError('n_or_e must be either \'n\' for nodes or \'e\' for edges.')
