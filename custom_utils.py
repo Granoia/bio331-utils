@@ -293,7 +293,7 @@ class Graph:
             attrs[n.get('ID')] = {}
             attrs[n.get('ID')]['id'] = n.get('ID')
             attrs[n.get('ID')]['content'] = n.get('ID')
-        self.GSnodeAttrs = attrs
+        return attrs
     
     def initGSedgeAttrs(self):
         attrs = {}
@@ -301,9 +301,9 @@ class Graph:
             s = e.get('source')
             t = e.get('target')
             if s not in attrs:
-                attrs[source] = {}
+                attrs[s] = {}
             attrs[s][t] = {}
-        self.GSedgeAttrs = attrs
+        return attrs
     
     
     def GSnodeAttrsUpdate(self,GSattr,attrDict):
