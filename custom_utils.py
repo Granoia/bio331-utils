@@ -106,8 +106,8 @@ class Graph:
         self.nodes = self.init_nodes(nodes)
         self.edges = self.init_edges(edges)
         
-        self.GSnodeAttrs = None
-        self.GSedgeAttrs = None
+        self.GSnodeAttrs = self.initGSnodeAttrs()
+        self.GSedgeAttrs = self.initGSedgeAttrs()
 
     def __dir__(self):
         return [set_to_list(self.node_dir), set_to_list(self.edge_dir)]
@@ -199,7 +199,27 @@ class Graph:
         self.putEdgeAttrs(attrName, attrDict, loud)
     
     def getAttr(self, attrName, n_or_e, loud=False):
-        pass
+        #returns a dictionary whose keys are IDs and whose values are values of the given attribute
+        d = {}
+        if n_or_e = 'n':
+            working_group = self.nodes
+        elif n_or_e = 'e':
+            working_group = self.edges
+        else:
+            raise raise NameError('n_or_e must be either \'n\' for nodes or \'e\' for edges.')
+        
+        for x in working_group:
+            d[x.get('ID',loud)] = x.get(attrName,loud)
+        
+        return d
+    
+    def getNodeAttr(self, attrName, loud=False):
+        #returns a dictionary whose keys are node IDs and whose values are the given attribute
+        return self.getAttr(attrName, 'n', loud)
+        
+    def getEdgeAttr(self, attrName, loud=False):
+        #returns a dictionary whose keys are edge IDs and whose values are the given attribute
+        return self.getAttr(attrName, 'e', loud)
     
     
     
@@ -209,32 +229,14 @@ class Graph:
     
     def normNodeAttr(self,attrName,loud=False):
         #normalizes the values for the given node attribute and returns the normalized values as a dictionary
-        d = {}
-        for n in self.nodes:
-            d[n.get('ID')] = float('nan')
+        return self.normByAttr(attrName, 'n', loud)
 
-        for n in self.nodes:
-            if n.get(attrName,loud) != None:
-                a_max = n.get(attrName,loud)
-                max_node = n
-                break
-        else:
-            raise TypeError('Could not normalize by attribute ' + str(attrName) + 'because all nodes have None for that attribute.')
-
-        for n in self.nodes:
-            if n.get(attrName,loud) != None and n.get(attrName,loud) > a_max:
-                a_max = n.get(attrName,loud)
-                max_node = n
-
-        for n in self.nodes:
-            if n.get(attrName,loud) != None:
-                d[n.get('ID')] = n.get(attrName,loud)/float(a_max)
-
-        return d
-
+    def normEdgeAttr(self,attrName,loud=False):
+        #normalizes the values for the given edge attribute and returns the normalized values as a dictionary
+        return self.normByAttr(attrName, 'e', loud)
 
     def normByAttr(self, attrName, n_or_e='n', loud=False):
-        #generalized version of normNodeAttr() but I haven't tested it yet so I'm keeping normNodeAttr() around until then
+        #generalized method for getting a dictionary with normalized values according to the given attribute
         d = {}
         if n_or_e == 'n':
             working_group = self.nodes
