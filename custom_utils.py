@@ -27,10 +27,7 @@ def parse_input(edgefile, delimiter, isDirected=False, isWeighted=False):
 
 
     nodes = set_to_list(node_set)
-
-    edges = []
-    for e in edge_set:
-        edges.append(set_to_list(e))
+    edges = set_to_list(edge_set)
     
     g = Graph(nodes, edges, isDirected, isWeighted)
 
@@ -43,23 +40,15 @@ def handleData(ls, edge_set, node_set, isDirected, isWeighted):
     #updates edge_set and node_set according to the number of elements in the data list and isDirected, isWeighted
     if not isWeighted:
         if len(ls) == 2:      #wont add self loops to the edge list, but adds nodes in self loops to the node list
-            if not isDirected:
-                new_edge = frozenset(ls)
-                edge_set.add(new_edge)
-            else:
-                new_edge = (ls[0],ls[1])
-                edge_set.add(new_edge)
+            new_edge = tuple(ls)
+            edge_set.add(new_edge)
         for node in ls:
             node_set.add(node)
 
     else:
         if len(ls) == 3:              #wont add self loops to edge list, but adds nodes in self loops to the node list
-            if not isDirected:
-                new_edge = frozenset(ls)
-                edge_set.add(new_edge)
-            else:
-                new_edge = (ls[0],ls[1],ls[2])
-                edge_set.add(new_edge)
+            new_edge = tuple(ls)
+            edge_set.add(new_edge)
             node_set.add(ls[0])
             node_set.add(ls[1])
 
@@ -287,6 +276,18 @@ class Graph:
                 d[e[0]].append(e[1])
         return d
 
+    def better_adj_ls(self):
+        d = {}
+        for n in self.nodes:
+            d[n.get('ID')] = []
+            
+        for e in self.edges:
+            if not self.isDirected:
+                d[e.get('source')].append(e.get('target'))
+                d[e.get('target')].append(e.get('source'))
+            else:
+                d[e.get('source')].append(e.get('target'))
+        return d
 
     ###############################################
     #GRAPHSPACE METHODS############################
