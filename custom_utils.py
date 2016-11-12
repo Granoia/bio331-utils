@@ -63,7 +63,34 @@ def set_to_list(s):
     for item in s:
         ls.append(item)
     return ls
+    
+    
+def vector_add(ls1, ls2):
+    #helper function, does vector addition
+    if len(ls1) != len(ls2):
+        raise IndexError("Error! Tried to add vectors " + str(ls1) + " and " + str(ls2) + " but these vectors have different lengths.")
+    new = []
+    for i in range(len(ls1)):
+        new.append(ls1[i] + ls2[i])
+    return new
 
+def scalar_mult(s, vector):
+    #helper function, multiplies a vector by a scalar
+    new = []
+    for e in vector:
+        new.append(s*e)
+    return new
+
+def vector_to_RGB(vector):
+    if len(vector) != 3:
+        raise IndexError("Error! Tried to convert vector " + str(vector) + " to RGB hex string, but vector was not length 3.")
+    for i in vector:
+        if i > 255 or i < 0:
+            raise ValueError("Error! Tried to convert vector " + str(vector) + " to RGB hex string but vector value " + str(i) + " was not between 0 and 255.")
+    
+    return '#{:02x}{:02x}{:02x}'.format(vector[0],vector[1],vector[2])
+    
+    
 '''
 #uncomment this and comment out all the code below to get parse_input() to run if it's currently throwing an error.
 class Graph:
@@ -215,7 +242,22 @@ class Graph:
         #returns a dictionary whose keys are edge IDs and whose values are the given attribute
         return self.getAttr(attrName, 'e', loud)
     
+    def putAttrs(self, attrName, attrDict, n_or_e, loud=False):
+        if n_or_e == 'n':
+            working_group = self.nodes
+        elif n_or_e == 'e':
+            working_group = self.edges
+        else:
+            raise NameError('n_or_e must be either \'n\' for nodes or \'e\' for edges.')
+        
+        for x in working_group:
+            x.put(attrName, attrDict[x.get('ID')])
+        
+    def putNodeAttr(self, attrName, attrDict, loud=False):
+        self.putAttrs(attrName,attrDict,'n',loud)
     
+    def putEdgeAttr(self, attrName, attrDict, loud=False):
+        self.putAttrs(attrName,attrDict,'e',loud)
     
     #########################################################
     #UTILITY METHODS#########################################
@@ -231,6 +273,7 @@ class Graph:
 
     def normByAttr(self, attrName, n_or_e='n', loud=False):
         #generalized method for getting a dictionary with normalized values according to the given attribute
+        #the keys of the dictionary are the ID's of the objects.
         d = {}
         if n_or_e == 'n':
             working_group = self.nodes
@@ -350,25 +393,45 @@ class Graph:
         json_utils.write_json(data,json_filename)
         graphspace_utils.postGraph(graphID, json_filename, user, pw)
         
+        
+    ###############################################################
+    #SCALABILITY HELPER METHODS (not for user)#####################
+    ###############################################################
+    
+    def scaleGradientByNodeAttr(self, color1, color2, attrName, loud=False):
+        normDict = self.normNodeAttr(attrName,loud)
+        self.getNodeGradient(color1,color2,normDict)
+    
+    def getNodeGradient(self, color1, color2, normDict):
+        color_dict = {}
+        for n in self.nodes:
+            color_dict[n.get('ID')] = n.getGColor(color1,color2,normDict[n.get('ID')]) #not sure how this handles None or nan yet, I'll figure out those corner cases later on.
+        
+        if 'background_color' not in self.node_dir:
+            self.installNodeAttr('background_color',color_dict,loud)
+        else:
+            self.putNodeAttrs('background_color',color_dict,loud)
+        
+        
+        
 
-class Node:
-    #node class for the graph with attributes that can be dynamically updated by a user(!)
-    #we do this by keeping track of a set of terms called the directory (accessible using the Python inbuilt dir() function) and a dictionary which holds all the information
-    #to make a new attribute, run newAttr() to install a new term in the directory. Only then is put() able to add a key value pair to the dictionary for that attribute.
-    #to access data from this node class, use the accession function get()
-    def __init__(self, ID):
+class GenericDynamicObject:
+    #Parent class for nodes and edges that allows attributes that can be dynamically updated by a user(!)
+    #GenericDynamicObject does this by keeping track of a set of terms called the directory (accessible using the Python inbuilt dir() function) and a dictionary which holds the value associated with each term.
+    #to use this infrastructure, run newAttr() to install a new term in the directory. Only then is put() able to add a key value pair to the dictionary for that attribute.
+    #to access the data after it is put(), use the accession method get()
+    def __init__(self):
         self.d = {}
         self.dir_set = set()
-        self.newAttr('ID')
-        self.put('ID', ID)
-
-    def put(self, attrName,val,loud=False):
-        #inputs a value for an existing attribute
-        if attrName not in dir(self):
-            raise NameError(str(self.__class__.__name__) + ' object contains no attribute called ' + str(attrName))
-        else:
-            self.d[attrName] = val
-
+    
+    def newAttr(self, attrName,loud=False):
+        #installs a new attribute in the directory for recognition by the put() and get() methods.
+        #uses a set to avoid adding the same attribute multiple times (prints a warning when this happens if loud=True)
+        if loud and (attrName in self.dir_set):
+            print("Warning! Attempting to add a new attribute " + str(attrName) + " to " + str(self.__class__.__name__) + " " + str(self.get('ID')) + " but that attribute already exists in the directory.")
+            
+        self.dir_set.add(attrName)
+    
     def get(self,attrName,loud=False):
         #gets a value for an existing attribute
         #if the attribute exists in the directory, but no value has been put, returns None (prints a warning if the loud argument is True)
@@ -380,25 +443,43 @@ class Node:
             return None
         else:
             return self.d[attrName]
-        
-            
-    def newAttr(self, attrName,loud=False):
-        #installs a new attribute in the directory for recognition by the put() and get() methods.
-        #uses a set to avoid adding the same attribute multiple times (prints a warning when this happens if loud=True)
-        if loud and (attrName in self.dir_set):
-            print("Warning! Attempting to add a new attribute " + str(attrName) + " to " + str(self.__class__.__name__) + " " + str(self.get('ID')) + " but that attribute already exists in the directory.")
-            
-        self.dir_set.add(attrName)
-
+    
+    def put(self, attrName,val,loud=False):
+        #inputs a value for an existing attribute
+        if attrName not in dir(self):
+            raise NameError(str(self.__class__.__name__) + ' object contains no attribute called ' + str(attrName))
+        else:
+            self.d[attrName] = val
+    
     def __dir__(self):
         #gives the directory in list form.
         #this is magic class syntax. access this method via the Python inbuilt function dir()
         #for example, if you made a node whose variable name is a, then to see the directory you would give dir(a) in python interactive.
         return set_to_list(self.dir_set)
 
+    
+    ########################
+    #Non-structural methods#
+    ########################
+    
+    def getGColor(self, color1, color2, normVal):
+        gradient_vector = vector_add(scalar_mult((1-normVal),color1), scalar_mult(normVal,color2))     #in plain mathematics: (1-normVal)*color1 + (normVal)*color2 
+        return vector_to_RGB(gradient_vector)
+        
+class Node(GenericDynamicObject):
+    #Nodes are instantiated using a GenericDynamicObject initialized with an ID.
+    def __init__(self, ID):
+        self.d = {}
+        self.dir_set = set()
+        self.newAttr('ID')
+        self.put('ID', ID)
 
-class Edge(Node):
-    #as it turns out the Node class is so generalizeable that edges are exactly the same except with a different init() statement
+
+class Edge(GenericDynamicObject):
+    #Edges are instantiated using a GenericDynamicObject initialized with a source and target (arbitrary if undirected), and optionally a weight and direction.
+    #All edges have 'source' 'target' and 'ID' in their directory by default. 
+    #If the edge is not directed, 'source' and 'target' are determined by alphabetization. This also factors into the 'ID' attribute.
+    #For edges, 'ID' is a string composed of the source string and the target string, delimited by a semicolon.
     def __init__(self, s, t, weight=None, directed=False):
         self.d = {}
         self.dir_set = set()
