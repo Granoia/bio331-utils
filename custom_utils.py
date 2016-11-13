@@ -88,7 +88,7 @@ def vector_to_RGB(vector):
         if i > 255 or i < 0:
             raise ValueError("Error! Tried to convert vector " + str(vector) + " to RGB hex string but vector value " + str(i) + " was not between 0 and 255.")
     
-    return '#{:02x}{:02x}{:02x}'.format(vector[0],vector[1],vector[2])
+    return '#{:02x}{:02x}{:02x}'.format(int(vector[0]),int(vector[1]),int(vector[2]))
     
     
 '''
@@ -368,7 +368,7 @@ class Graph:
         key_str = '__'+GSattr+'__'
         attrs = self.GSnodeAttrs
         for n in self.nodes:
-            attrs[n][GSattr] = n.get(key_str,loud)
+            attrs[n.get('ID')][GSattr] = n.get(key_str,loud)
         self.GSnodeAttrs = attrs
 
     
