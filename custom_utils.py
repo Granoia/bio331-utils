@@ -123,6 +123,9 @@ class Graph:
         self.nodes = self.init_nodes(nodes)
         self.edges = self.init_edges(edges)
         
+        self.GSnodeDir = set()
+        self.GSedgeDir = set()
+        
         self.GSnodeAttrs = self.initGSnodeAttrs()
         self.GSedgeAttrs = self.initGSedgeAttrs()
         
@@ -355,21 +358,45 @@ class Graph:
         return attrs
     
     
-    def GSnodeAttrsUpdate(self,GSattr,attrDict):
+    def GSnodeAttrInstall(self,GSattr,loud=False):
+        #finds the node attribute corresponding with the given GraphSpace attribute and puts it into the GSnodeAttr dictionary.
+        if GSattr not in self.GSnodeDir:
+            if loud:
+                print('GraphSpace attribute ' + GSattr + ' not yet in GS Node Attribute Directory. Adding now.')
+            self.GSnodeDir.add(GSattr)
+        
+        key_str = '__'+GSattr+'__'
         attrs = self.GSnodeAttrs
-        for n in attrDict:
-            attrs[n][GSattr] = attrDict[n]
+        for n in self.nodes:
+            attrs[n][GSattr] = n.get(key_str,loud)
         self.GSnodeAttrs = attrs
+
     
-    
-    def GSedgeAttrsUpdate(self,GSattr,edgeAttrDict):
+    def GSedgeAttrInstall(self,GSattr,loud=False):
+        #finds the edge attribute corresponding with the given GraphSpace attribute and puts it into the GSnodeAttr dictionary.
+        if GSattr not in self.GSedgeDir:
+            if loud:
+                print('GraphSpace attribute ' + GSattr + ' not yet in GS Edge Attribute Directory. Adding now.')
+            self.GSedgeDir.add(GSattr)
+        
+        key_str = '__'+GSattr+'__'
         attrs = self.GSedgeAttrs
-        for sDict in edgeAttrDict:
-            for t in sDict:
-                attrs[s][t][GSattr] = edgeAttrDict[s][t]
+        for e in self.edges:
+            attrs[e.get('source')][e.get('target')][GSattr] = e.get(key_str)
         self.GSedgeAttrs = attrs
 
+        
+    def GSattrsUpdate(self, loud=False):
+        for attr in self.GSnodeDir:
+            self.GSnodeAttrInstall(attr,loud)
+        
+        for attr in self.GSedgeDir:
+            self.GSedgeAttrInstall(attr,loud)
+        
+        
+        
     def uploadGraph(self, title=None, graphID=None, desc=None, tags=None):
+        self.GSattrsUpdate()
         json_filename = 'graphspace_upload.json'
         user = input("Graphspace username: ")
         pw = input("Graphspace password: ")
@@ -400,18 +427,18 @@ class Graph:
     
     def scaleGradientByNodeAttr(self, color1, color2, attrName, loud=False):
         normDict = self.normNodeAttr(attrName,loud)
-        self.getNodeGradient(color1,color2,normDict)
+        self.getNodeGradient(color1,color2,normDict,loud)
     
-    def getNodeGradient(self, color1, color2, normDict):
+    def getNodeGradient(self, color1, color2, normDict, loud=False):
         color_dict = {}
         for n in self.nodes:
-            color_dict[n.get('ID')] = n.getGColor(color1,color2,normDict[n.get('ID')]) #not sure how this handles None or nan yet, I'll figure out those corner cases later on.
+            color_dict[n.get('ID',loud)] = n.getGColor(color1,color2,normDict[n.get('ID',loud)]) #not sure how this handles None or nan yet, I'll figure out those corner cases later on.
         
         if 'background_color' not in self.node_dir:
-            self.installNodeAttr('background_color',color_dict,loud)
+            self.installNodeAttr('__background_color__',color_dict,loud)
         else:
-            self.putNodeAttrs('background_color',color_dict,loud)
-        
+            self.putNodeAttrs('__background_color__',color_dict,loud)
+        self.GSnodeAttrInstall('background_color',loud)
         
         
 
