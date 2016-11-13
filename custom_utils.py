@@ -264,7 +264,7 @@ class Graph:
     
     #########################################################
     #UTILITY METHODS#########################################
-    #########################################################
+    #########################################################        
     
     def normNodeAttr(self,attrName,loud=False):
         #normalizes the values for the given node attribute and returns the normalized values as a dictionary
@@ -440,7 +440,17 @@ class Graph:
             self.putNodeAttrs('__background_color__',color_dict,loud)
         self.GSnodeAttrInstall('background_color',loud)
         
-        
+    
+    ##################################################
+    #GRAPH ANALYSIS METHODS###########################
+    ##################################################
+    
+    def getNodeDegree(self,loud=False):
+        adj_ls = self.better_adj_ls()
+        deg_dict = {}
+        for n in self.nodes:
+            deg_dict[n.get('ID',loud)] = len(adj_ls[n.get('ID',loud)])
+        self.installNodeAttr('degree',deg_dict,loud)
 
 class GenericDynamicObject:
     #Parent class for nodes and edges that allows attributes that can be dynamically updated by a user(!)
