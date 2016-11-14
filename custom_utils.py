@@ -5,6 +5,8 @@ import graphspace_utils
 import numpy as np
 
 try:
+    import matplotlib
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     print("matplotlib was successfully imported!")
     matplotlib_import = True
