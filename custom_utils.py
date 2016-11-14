@@ -3,6 +3,13 @@ import math
 import json_utils
 import graphspace_utils
 
+try:
+    import networkx as nx
+    nx_import = True
+except ImportError:
+    nx_import = False
+
+
 def parse_input(edgefile, delimiter, isDirected=False, isWeighted=False):
     """
     Input file parser that takes in a file full of edges and parses them according to a modular delimiter. Can handle edge files that have weights, but the setting is off by default.
@@ -203,6 +210,17 @@ class Graph:
     
     
     
+    #############################
+    #misc helper functions#######
+    #############################
+    
+    def check_nore(self, n_or_e):
+        if n_or_e == 'n':
+            return self.nodes
+        elif n_or_e == 'e':
+            return self.edges
+        else:
+            raise NameError('n_or_e must be either \'n\' for nodes or \'e\' for edges.')
 
     
     
@@ -452,6 +470,41 @@ class Graph:
             deg_dict[n.get('ID',loud)] = len(adj_ls[n.get('ID',loud)])
         self.installNodeAttr('degree',deg_dict,loud)
 
+    
+    
+    ##################################################################################
+    #NETWORKX HOOKUP (ONLY HAPPENS IF NETWORKX IMPORT WAS SUCCESSFUL)#################
+    ##################################################################################
+    
+    if nx_import:
+        def init_nx(self):
+            self.nx_graph = nx.Graph()
+            
+            for n in self.nodes:
+                self.nx_graph.add_node(n.get('ID'))
+            
+            for e in self.edges:
+                self.nx_graph.add_edge(e.get('source'),e.get('target'))
+            
+            
+            
+        def nx_analysis(self, algorithmName, n_or_e, loud=False):
+            try:
+                alg = getattr(self.nx_graph, algorithmName)
+            except AttributeError:
+                print("Networkx algorithm: " + str(algorithmName) + " was not found.")
+            
+            working_group = self.check_nore(n_or_e)
+            
+            result_dict = self.nx_graph.alg()
+            
+            if n_or_e == 'n':
+                self.installNodeAttr('nx_'+algorithmName, result_dict, loud)
+            else:
+                self.installEdgeAttr('nx_'+algorithmName, result_dict, loud)
+            
+    
+    
 class GenericDynamicObject:
     #Parent class for nodes and edges that allows attributes that can be dynamically updated by a user(!)
     #GenericDynamicObject does this by keeping track of a set of terms called the directory (accessible using the Python inbuilt dir() function) and a dictionary which holds the value associated with each term.
