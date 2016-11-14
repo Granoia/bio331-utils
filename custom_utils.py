@@ -490,7 +490,8 @@ class Graph:
             
             
             
-        def nx_analysis(self, algorithmName, n_or_e, loud=False):
+        def nx_graphwide_analysis(self, algorithmName, n_or_e, loud=False):
+            #given (as a string) the name of a graphwide analysis algorithm that returns a dictionary from Networkx, installs the results of that algorithm into the nodes or edges with attrName: 'nx_[algorithmName]'
             try:
                 alg = getattr(self.nx_graph, algorithmName)
             except AttributeError:
@@ -498,7 +499,7 @@ class Graph:
             
             working_group = self.check_nore(n_or_e)
             
-            result_dict = self.nx_graph.alg()
+            result_dict = alg()
             
             if n_or_e == 'n':
                 self.installNodeAttr('nx_'+algorithmName, result_dict, loud)
