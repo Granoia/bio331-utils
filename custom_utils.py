@@ -142,6 +142,9 @@ class Graph:
         self.GSdesc = None
         self.GStags = None
 
+        if nx_import:
+            self.init_nx()
+
     def __dir__(self):
         return [set_to_list(self.node_dir), set_to_list(self.edge_dir)]
 
@@ -493,13 +496,14 @@ class Graph:
         def nx_graphwide_analysis(self, algorithmName, n_or_e, loud=False):
             #given (as a string) the name of a graphwide analysis algorithm that returns a dictionary from Networkx, installs the results of that algorithm into the nodes or edges with attrName: 'nx_[algorithmName]'
             try:
-                alg = getattr(self.nx_graph, algorithmName)
+                alg = getattr(nx, algorithmName)
+                result_dict = alg(self.nx_graph)
             except AttributeError:
                 print("Networkx algorithm: " + str(algorithmName) + " was not found.")
             
             working_group = self.check_nore(n_or_e)
             
-            result_dict = alg()
+            
             
             if n_or_e == 'n':
                 self.installNodeAttr('nx_'+algorithmName, result_dict, loud)
