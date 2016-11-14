@@ -2,13 +2,22 @@
 import math
 import json_utils
 import graphspace_utils
+import numpy as np
 
 try:
+    import matplotlib.pyplot as plt
+    print("matplotlib was successfully imported!")
+    matplotlib_import = True
+except ImportError:
+    print("matplotlib was not successfully imported. matplotlib hookup methods will be inaccessible.")
+    matplotlib_import = False
+    
+try:
     import networkx as nx
-    print("networkx was succesfully imported!")
+    print("networkx was successfully imported!")
     nx_import = True
 except ImportError:
-    print("networkx was not successfully imported.")
+    print("networkx was not successfully imported. networkx hookup methods will be inacessible.")
     nx_import = False
 
 
@@ -98,6 +107,22 @@ def vector_to_RGB(vector):
             raise ValueError("Error! Tried to convert vector " + str(vector) + " to RGB hex string but vector value " + str(i) + " was not between 0 and 255.")
     
     return '#{:02x}{:02x}{:02x}'.format(int(vector[0]),int(vector[1]),int(vector[2]))
+
+
+
+
+def quick_plot(d):
+    data = []
+    for k in d:
+        data.append(d[k])
+    
+    values, base = np.histogram(data, bins=40)
+    
+    cumulative = np.cumsum(values)
+    
+    plt.plot(base[:-1], cumulative, c='blue')
+    
+    plt.savefig('testplot.png')
     
     
 '''
@@ -509,7 +534,20 @@ class Graph:
                 self.installNodeAttr('nx_'+algorithmName, result_dict, loud)
             else:
                 self.installEdgeAttr('nx_'+algorithmName, result_dict, loud)
+
+                
+    
+
+    
+    #####################################################################################
+    #MATPLOTLIB HOOKUP (ONLY HAPPENS IF MATPLOTLIB IMPORT WAS SUCCESSFUL)################
+    #####################################################################################
+    
+    if matplotlib_import:
+        def plot_histogra(self, attrName, loud=False):
+            pass
             
+    
     
     
 class GenericDynamicObject:
