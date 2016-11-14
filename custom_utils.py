@@ -5,8 +5,10 @@ import graphspace_utils
 
 try:
     import networkx as nx
+    print("networkx was succesfully imported!")
     nx_import = True
 except ImportError:
+    print("networkx was not successfully imported.")
     nx_import = False
 
 
