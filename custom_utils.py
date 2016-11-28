@@ -171,7 +171,7 @@ class Graph:
         else:
             raise NameError("Your input was not recognized. Please enter one of the following: \ncontinuous \tdiscrete")
     
-    
+
     
     
     ###############################
@@ -509,8 +509,8 @@ class Graph:
         
         return d
     
-    def discretizeAttr(self, attrName, n_or_e):
-        working_group = self.handle_nore(n_or_e)
+    def discretizeAttr(self, attrName, n_or_e='n'):
+        working_group = self.check_nore(n_or_e)
         group_dict = {}
         attr_dict = {}
         for x in working_group:
