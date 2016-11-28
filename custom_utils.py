@@ -1,3 +1,24 @@
+#only for testing
+a = "Alice"
+b = "Bob"
+c = "Charlie"
+d = {}
+d['a'] = a
+d['b'] = b
+d['c'] = a
+d['d'] = b
+d['e'] = a
+d['f'] = b
+d['g'] = a
+d['h'] = b
+d['i'] = a
+d['j'] = c
+d['k'] = c
+d['l'] = c
+d['m'] = b
+d['n'] = a
+
+
 #customized utils
 import math
 import json_utils
@@ -245,9 +266,9 @@ class Graph:
             raise NameError("The GraphSpace attribute you entered was not recognized. Please enter one of the following: \nbackground_color \tborder_color \t shape")    
     
     
-    def discrete_color(self, attrName, GS_attr):
+    def discrete_color(self, attrName, GS_attr, n_or_e='n'):
         m_or_a = input("Manual or Automatic color picking scheme: ")
-        
+        working_group = self.check_nore(n_or_e)
         
         disc_dict, group_dict = self.discretizeAttr(attrName)
         GS_dict = {}
@@ -262,7 +283,7 @@ class Graph:
                 if color == 'quit':
                     return
                 for x in group_dict[g]:
-                    GS_dict[x.get('ID')] = vector_to_RBG(color)
+                    GS_dict[x] = vector_to_RGB(color)
         
         else:
             raise NameError("Please enter either manual or automatic.")
@@ -273,12 +294,12 @@ class Graph:
     def discrete_shape(self, attrName):
         m_or_a = input("Manual or Automatic shape picking: ")
         
-        disc_dict, group_dict = self.discretizeAttr(attrName)
+        attr_dict, group_dict = self.discretizeAttr(attrName)
         GS_dict = {}
         
         if m_or_a.lower() == 'automatic':
             for n in self.nodes:
-                GS_dict[n.get('ID')] = pick_shape(disc_dict[n.get('ID')])
+                GS_dict[n.get('ID')] = pick_shape(attr_dict[n.get('ID')])
         
         elif m_or_a.lower() == 'manual':
             for g in group_dict:
@@ -288,12 +309,13 @@ class Graph:
                 if shape not in shape_ls:
                     raise NameError("Please choose from one of the shapes on the list.")
                 for n in group_dict[g]:
-                    GS_dict[n.get('ID')] = shape
+                    print(n)
+                    GS_dict[n] = shape
         else:
             raise NameError("Please enter either manual or automatic.")
         
-        self.installNodeAttr('__'+GS_attr+'__', GS_dict)
-        self.GSnodeAttrInstall(GS_attr)
+        self.installNodeAttr('__shape__', GS_dict)
+        self.GSnodeAttrInstall('shape')
     
     ########################################################
     #INFRASTRUCTURE METHODS (not for user)##################
@@ -522,7 +544,7 @@ class Graph:
         i = 0
         for g in group_dict:
             for x in group_dict[g]:
-                attr_dict[x.get('ID')] = i
+                attr_dict[x] = i
             i += 1
         return attr_dict, group_dict    
 
