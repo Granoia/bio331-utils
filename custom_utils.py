@@ -511,8 +511,8 @@ class Graph:
     
     def discretizeAttr(self, attrName, n_or_e='n'):
         working_group = self.check_nore(n_or_e)
-        group_dict = {}
-        attr_dict = {}
+        group_dict = {} #keys are categories, values are lists of nodes
+        attr_dict = {} #keys are nodes, values are categories
         for x in working_group:
             current = x.get(attrName)
             if current not in group_dict:
