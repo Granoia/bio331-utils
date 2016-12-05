@@ -1,24 +1,3 @@
-#only for testing
-a = "Alice"
-b = "Bob"
-c = "Charlie"
-d = {}
-d['a'] = a
-d['b'] = b
-d['c'] = a
-d['d'] = b
-d['e'] = a
-d['f'] = b
-d['g'] = a
-d['h'] = b
-d['i'] = a
-d['j'] = c
-d['k'] = c
-d['l'] = c
-d['m'] = b
-d['n'] = a
-
-
 #customized utils
 import math
 import json_utils
@@ -44,60 +23,224 @@ except ImportError:
     nx_import = False
 
 
-def parse_input(edgefile, delimiter, isDirected=False, isWeighted=False):
-    """
-    Input file parser that takes in a file full of edges and parses them according to a modular delimiter. Can handle edge files that have weights, but the setting is off by default.
-    Returns a graph object.
-    Throws out self loops.
-    """
-    edge_set = set()
-    node_set = set()
-    if not isWeighted:
-        max_edge_size = 2
-    else:
-        max_edge_size = 3
+def parse(edgefile, delimiter='\t', isDirected=False, edgeHeader=None, nodefile=None, nodeHeader=None, nodeDelimiter=None, edgeDelimiter=None):
+    e_formatted = True
+    n_formatted = True
+    if edgeHeader:
+        e_formatted = (edgeHeader[0].lower() in ['source', 's']) and (edgeHeader[1].lower() in ['target','t'])
+    if nodeHeader:
+        n_formatted = (nodeHeader[0].lower() == 'id')
+    if not e_formatted and n_formatted:
+        raise StandardError("A header given to parse() as an argument was not formatted correctly. Edgefile headers should start with 'source' followed by 'target'. Nodefile headers should start with 'ID'.")
 
-    with open(edgefile, 'r') as f:
-        for line in f:
-            ls = line.strip('\n').split(delimiter)
-            if (len(ls) != max_edge_size) and (len(ls) != max_edge_size-1):
-                print("Something went wrong during input_parser(). There were " + str(len(ls)) + " columns in line:\n" + line.strip('\n') + "\nExpected " + str(max_edge_size) + " or " + str(max_edge_size-1) + " columns.")
-                return -1
-
-            handleData(ls, edge_set, node_set, isDirected, isWeighted)
-
-
-    nodes = set_to_list(node_set)
-    edges = set_to_list(edge_set)
     
-    g = Graph(nodes, edges, isDirected, isWeighted)
+    #if for some abominable reason your nodefile and edgefile have different delimiters, this next chunk will handle it
+    if nodeDelimiter:
+        n_delimiter = nodeDelimiter
+    else:
+        n_delimiter = delimiter
+    
+    if edgeDelimiter:
+        e_delimiter = edgeDelimiter
+    else:
+        e_delimiter = delimiter
+    
+    #figures out whether the header is supplied in the arguments or needs to be fetched from the file.
+    #if the header needs to be fetched from the file, this block also notes that the actual data starts on line 1 instead of line 0.
+    if edgeHeader:
+        edge_header = edgeHeader
+        e_startline = 0
+    else:
+        edge_header = get_header(edgefile, e_delimiter, 'e')
+        e_startline = 1
 
-    return g
-    #return g, nodes, edges
-
-
-
-def handleData(ls, edge_set, node_set, isDirected, isWeighted):
-    #helper function for parse_input
-    #updates edge_set and node_set according to the number of elements in the data list and isDirected, isWeighted
-    if not isWeighted:
-        if len(ls) == 2:      #wont add self loops to the edge list, but adds nodes in self loops to the node list
-            new_edge = tuple(ls)
-            edge_set.add(new_edge)
-        for node in ls:
-            node_set.add(node)
+    
+    
+    if nodefile == None:
+        nodes, edges = handle_edgefile(isDirected, edgefile, edge_header, e_delimiter, e_startline)
 
     else:
-        if len(ls) == 3:              #wont add self loops to edge list, but adds nodes in self loops to the node list
-            new_edge = tuple(ls)
-            edge_set.add(new_edge)
-            node_set.add(ls[0])
-            node_set.add(ls[1])
+        throwaway, edges = handle_edgefile(isDirected, edgefile, edge_header, e_delimiter, e_startline)
+        
+        if nodeHeader:
+            node_header = nodeHeader
+            n_startline = 0
+        else:
+            node_header = get_header(nodefile, n_delimiter, 'n')
+            n_startline = 1        
+        nodes = handle_nodefile(nodefile, node_header, n_delimiter, n_startline)
+    
+    return Graph(nodes,edges,isDirected)
 
-        if len(ls) == 2:
-            node_set.add(ls[0])
+    
+def get_header(file, delimiter, n_or_e):
+    with open(file, 'r') as f:
+        h = f.readline()
+        ls = h.strip().split(delimiter)
+    
+    if n_or_e == 'n':
+        print("No header was supplied as argument for parsing node file " + file + "\nProceeding with automatic header detection.")
+        if not ls[0].lower() == 'id':
+            print("Warning! get_header() sees that the first entry of the header is not called 'ID'. A properly formatted node file should have a column of node ID's first, followed optionally by other attribute columns.")
+            verify = input("Please verify: Does the first column of the node file contain node ID's despite not being called 'ID'? \n('yes' to proceed, 'no' to quit): ")
+            if verify.lower() == 'yes':
+                ls[0] = 'ID'
+            else:
+                raise ValueError("Quitting.")
+
+    
+    if n_or_e == 'e':
+        print("No header was supplied as argument for parsing edge file " + file + "\nProceeding with automatic header detection.")
+        if len(ls) == 1:
+            raise SyntaxError("\n\nThe parser has detected a header with only one column in the edge file. Edges must start with a source column and a target column. \nTip: Make sure you are supplying the correct delimiter for the input file. It defaults to tab ('\\t') but it can be supplied as an argument (e.g. parse('my_edgefile.txt',nodefile='my_nodefile.txt',delimiter=';'))")
+        if (not ls[0].lower() in ['source','s']) and (not ls[1].lower() in ['target', 't']):
+            print("Warning! get_header() sees that the first two entries of the header are not called 'source' and 'target' respectively. A properly formatted edge file should have a column of source nodes first, and a column of target nodes second, followed optionally by other attribute columns.")
+            verify = input("Please verify: Do the first two columns of the edge file contain the nodes linked by each edge despite not being labelled 'source' and 'target'?\n('yes' to proceed, 'no' to quit): ")
+            if verify.lower() == 'yes':
+                ls[0] = 'source'
+                ls[1] = 'target'
+            else:
+                raise ValueError("Quitting.")
+    print(ls)
+    return ls
+
+def handle_edgefile(isDirected, edgefile, header, delimiter, startline):
+    header_numtypes = find_header_numtypes(edgefile, header, delimiter, startline)
+    edges = []
+    nodes = []
+    node_set = set()
+    with open(edgefile, 'r') as ef:
+        i = 0
+        while i<startline:
+            ef.readline()
+            i+=1
+        for line in ef.readlines():
+            ls = line.strip().split(delimiter)
+            if len(ls) != len(header):
+                print("Warning! While parsing " + edgefile +", the following line did not match the number of entries given by the header. Thus it was not included in the Graph.\n" + line)
+                continue
+            node1 = handle_type(ls[0], header_numtypes[0])
+            node2 = handle_type(ls[1], header_numtypes[1])
+            node_set.add(node1)
+            node_set.add(node2)
+            new = Edge(node1, node2, directed=isDirected)
+            edges.append(new)
+            for i in range(2,len(header)):
+                new.newAttr(header[i])
+                new.put(header[i], handle_type(ls[i], header_numtypes[i]))
+    
+    for n in node_set:
+        new_node = Node(n)
+        nodes.append(new_node)
+    
+    return nodes, edges
+    
+    
+    
+    
+
+def check_int(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
+
+def check_float(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+def handle_nodefile(nodefile, node_header, delimiter='\t', startline=0):
+    nodes = []
+    header_numtypes = find_header_numtypes(nodefile, node_header, delimiter, startline)
+    with open(nodefile,'r') as f:
+        i = 0
+        while i < startline:     #scroll to the start of the data
+            f.readline()
+            i+=1
+        for line in f.readlines():
+            ls = line.strip().split(delimiter)
+            if len(ls) != len(node_header):
+                raise IndexError("Error while reading " + nodefile + ". Line with ID " + ls[0] + " did not have the correct number of data entries according to the header.")
+            new = Node(handle_type(ls[0], header_numtypes[0]))
+            nodes.append(new)
+            for i in range(1,len(node_header)):
+                new.newAttr(node_header[i])
+                new.put(node_header[i],handle_type(ls[i], header_numtypes[i]))
+    return nodes
+
+def find_header_numtypes(file, header, delimiter='\t', startline=0):
+    col_dict = {}
+    for e in header:
+        col_dict[e] = []
+    
+    with open(file, 'r') as f:
+        i = 0
+        while i < startline:
+            f.readline()
+            i += 1
+        for line in f.readlines():
+            ls = line.strip().split(delimiter)
+            for i in range(len(ls)):
+                col_dict[header[i]].append(ls[i])
+    
+    header_numtypes = []
+    for h in header:
+        t = determine_column_numtype(col_dict[h], h)
+        header_numtypes.append(t)
+    return header_numtypes
 
 
+def determine_column_numtype(col, head):
+    if head.lower() in ['id','source','s','target','t']:
+        #for columns containing node ID's, we want to be strict with our typing.
+        #this ensures that if any of the node ID's are not numerical, the column is given the label string
+        all_numeric = True
+        for e in col:
+            if not check_float(e):
+                return 'string'
+            
+    else:
+        #for other columns I wanted to allow the possibility of putting multiple types in a given attribute
+        #the only actual ambiguity this creates is whether to process numbers without decimals as ints or floats
+        #this code will label any column containing floats as 'float' so that numbers without decimals are processed as floats in those columns
+        no_nums = True
+
+        for e in col:
+            if check_float(e) and not check_int(e):
+                return 'float'
+            elif check_int(e):
+                no_nums = False
+            
+        if no_nums:
+            return None
+        else:
+            return 'int'
+
+
+def handle_type(entry, numtype):
+    if numtype == 'string':
+        return entry
+    
+    if entry == 'None':
+        return None
+    elif entry == "True":
+        return True
+    elif entry == "False":
+        return False
+    elif numtype=='int':
+        if check_int(entry):
+            return int(entry)
+    elif numtype=='float':
+        if check_float(entry):
+            return float(entry)
+    else:
+        return entry
+    
+    
 def set_to_list(s):
     #helper function
     #converts a set to a list
@@ -171,7 +314,6 @@ def pick_shape(n):
         return shape_ls[n]
     
     
-    
 class Graph:
     """
     This class will provide all the planned functionality. The basic idea is to be able to scale a given visual attribute (on graphspace) by a given data attribute as easily as possible without loss of customization power.
@@ -184,20 +326,150 @@ class Graph:
     #####################
     
     def visualize(self, attrName):
-        c_or_d = input('Is the attribute to be visualized continuous or discrete: ').lower()
-        if c_or_d == 'continuous':
-            self.visualize_c(attrName)
-        elif c_or_d == 'discrete':
-            self.visualize_d(attrName)
+        if attrName in self.node_dir and attrName in self.edge_dir:
+            n_or_e = input('Do you mean ' + attrName + ' for nodes or edges? (input \'n\' or \'e\'): ')
+        elif attrName in self.node_dir:
+            n_or_e = 'n'
+        elif attrName in self.edge_dir:
+            n_or_e = 'e'
         else:
-            raise NameError("Your input was not recognized. Please enter one of the following: \ncontinuous \tdiscrete")
+            raise NameError("Please input 'n' or 'e'")
+        
+        if n_or_e == 'n':
+            c_or_d = input('Is the attribute to be visualized continuous or discrete: ').lower()
+            if c_or_d == 'continuous':
+                self.visualize_c(attrName)
+            elif c_or_d == 'discrete':
+                self.visualize_d(attrName)
+            else:
+                raise NameError("Your input was not recognized. Please enter one of the following: \ncontinuous \tdiscrete")
+        
+        else:
+            self.edge_visualize(attrName)
     
 
     
-    
+    def export(self, edgefile=None, nodefile=None, delimiter='\t'):
+        if edgefile == None:
+            edgefile = input('Outprefix for edge file: ') + '.txt'
+        
+        if nodefile == None:
+            nodefile = input('Outprefix for node file: ') + '.txt'
+        
+        with open(edgefile, 'w') as ef:
+            edge_header = self.make_header('e')
+            s = ""
+            for h in edge_header:
+                s+= str(h) + delimiter
+            s = s[:-len(delimiter)] + '\n'
+            ef.write(s)
+            
+            for e in self.edges:
+                s = ""
+                for h in edge_header:
+                    entry = e.get(h)
+                    s+= str(entry) + delimiter
+                s = s[:-len(delimiter)] + '\n'
+                ef.write(s)
+        
+        with open(nodefile, 'w') as nf:
+            node_header = self.make_header('n')
+            s = ""
+            for h in node_header:
+                s += str(h) + delimiter
+            s = s[:-len(delimiter)] + '\n'
+            nf.write(s)
+            
+            for n in self.nodes:
+                s = ""
+                for h in node_header:
+                    entry = n.get(h)
+                    s+= str(entry) + delimiter
+                s = s[:-len(delimiter)] + '\n'
+                nf.write(s)
+        return
+
+
+    #export helper method
+    def make_header(self, n_or_e):
+        header = []
+        if n_or_e == 'e':
+            header.append('source')
+            header.append('target')
+            for h in self.edge_dir:
+                if h.lower() not in ['source', 'target', 'id']:
+                    header.append(str(h))
+        
+        elif n_or_e == 'n':
+            header.append('ID')
+            for h in self.node_dir:
+                if h.lower() != 'id':
+                    header.append(str(h))
+        
+        else:
+            raise ValueError
+        
+        return header
+
+
     ###############################
     #visualize helper methods######
     ###############################
+
+    def edge_visualize(self, attrName):
+        c_or_d = input('Is the attribute to be visualized continuous or discrete: ').lower()
+        if c_or_d == 'continuous':
+            self.edge_c(attrName)
+        elif c_or_d == 'discrete':
+            self.edge_d(attrName)
+        else:
+            raise NameError("Your input was not recognized. Please enter one of the following: \ncontinuous \tdiscrete")
+    
+    def edge_c(self, attrName):
+        GS_attr = input('What GraphSpace visual attribute would you like to visualize by? Please enter one of the following: \nwidth \tline_color\n>>> ').lower()
+        if GS_attr == 'width':
+            self.scaleEdgeWidth(attrName)
+        elif GS_attr == 'line_color':
+            color1 = parse_RGB_input('Gradient Color 1 (input as an RGB vector e.g. [255,0,0]): ')
+            color2 = parse_RGB_input('Gradient Color 2 (input as an RGB vector e.g. [0,255,0]): ')
+            self.scaleGradient(attrName, color1, color2, GS_attr, n_or_e='e')
+
+    def scaleEdgeWidth(self, attrName):
+        max_size = int(input("Maximum edge width: "))
+        normDict = self.normEdgeAttr(attrName)
+        if max_size < 12:
+            max_size = 12
+        
+        diff = max_size - 12
+        
+        size_dict = {}
+        
+        for e in normDict:
+            size_dict[e] = 12 + diff*normDict[e] 
+        self.installEdgeAttr('__width__',size_dict)
+        self.GSedgeAttrInstall('width')
+            
+    def edge_d(self, attrName):
+        #needs to be tested
+        GS_attr = input('What GraphSpace visual attribute would you like to visualize by? Please enter one of the following: \nline_color \tline_style\n>>> ').lower()
+        if GS_attr == 'line_color':
+            self.discrete_color(attrName, 'line_color', 'e')
+        elif GS_attr == 'line_style':
+            attr_dict, group_dict = self.discretizeAttr(attrName,n_or_e='e')
+            GS_dict = {}
+            for g in group_dict:
+                style = input("Line style for group '" + str(g) + "' (choose from [solid, dotted, dashed]) (enter 'quit' to cancel): ")
+                if style == 'quit':
+                    return
+                if style not in ['solid', 'dotted', 'dashed']:
+                    raise NameError("Please choose from one of the styles on the list.")
+                for e in group_dict[g]:
+                    GS_dict[e] = style 
+                    
+            self.installEdgeAttr('__line_style__', GS_dict)
+            self.GSedgeAttrInstall('line_style')
+        else:
+            raise NameError("The GraphSpace attribute you entered was not recognized. Please enter one of the following: \nline_color \tline_style \t shape")
     
     #continuous
     def visualize_c(self, attrName):
@@ -211,27 +483,38 @@ class Graph:
 
     def continuous_color(self, attrName, GS_attr):
         if GS_attr in ["background_color", "border_color"]:
-            color1 = parse_RGB_input('Gradient Color 1 (RGB): ')
-            color2 = parse_RGB_input('Gradient Color 2 (RGB): ')
+            color1 = parse_RGB_input('Gradient Color 1 (input as an RGB vector e.g. [255,0,0]): ')
+            color2 = parse_RGB_input('Gradient Color 2 (input as an RGB vector e.g. [0,255,0]): ')
             self.scaleGradient(attrName, color1, color2, GS_attr)
         
         elif GS_attr == "background_blacken":
             wb_input = input('whiten, blacken, or both: ')
             self.scaleBlacken(attrName,wb_input)
-    
-    def scaleGradient(self, attrName, color1, color2, GS_attr, loud=False):
-        #scales a continuous attribute into a color gradient visualized by the given GraphSpace attribute
-        #should make getNodeGradient obsolete but I need to test to make sure it works.
+            
+
+    def scaleGradient(self, attrName, color1, color2, GS_attr, n_or_e='n', loud=False):
         color_dict = {}
-        normDict = self.normNodeAttr(attrName)
-        for n in self.nodes:
-            color_dict[n.get('ID',loud)] = getGColor(color1,color2,normDict[n.get('ID',loud)]) #not sure how this handles None or nan yet, I'll figure out those corner cases later on.
+        working_group = self.check_nore(n_or_e)
         
-        if '__' + GS_attr + '__' not in self.node_dir:
-            self.installNodeAttr('__' + GS_attr + '__',color_dict,loud)
-        else:
-            self.putNodeAttrs('__' + GS_attr + '__',color_dict,loud)
-        self.GSnodeAttrInstall(GS_attr,loud)    
+        normDict = self.normByAttr(attrName, n_or_e, loud)
+        
+        for x in working_group:
+            color_dict[x.get('ID',loud)] = getGColor(color1,color2,normDict[x.get('ID',loud)])
+        
+        if n_or_e == 'n':
+            if '__' + GS_attr + '__' not in self.node_dir:
+                self.installNodeAttr('__' + GS_attr + '__', color_dict, loud)
+            else:
+                self.putNodeAttrs('__' + GS_attr + '__', color_dict, loud)
+            self.GSnodeAttrInstall(GS_attr, loud)
+        
+        elif n_or_e == 'e':
+            if '__' + GS_attr + '__' not in self.edge_dir:
+                self.installEdgeAttr('__' + GS_attr + '__', color_dict, loud)
+            else:
+                self.putEdgeAttrs('__' + GS_attr + '__', color_dict, loud)
+            self.GSedgeAttrInstall(GS_attr, loud)
+
     
     def scaleBlacken(self, wb_input):
         #pass
@@ -270,7 +553,7 @@ class Graph:
         m_or_a = input("Manual or Automatic color picking scheme: ")
         working_group = self.check_nore(n_or_e)
         
-        disc_dict, group_dict = self.discretizeAttr(attrName)
+        disc_dict, group_dict = self.discretizeAttr(attrName,n_or_e)
         GS_dict = {}
         
         if m_or_a.lower() == 'automatic':
@@ -288,8 +571,12 @@ class Graph:
         else:
             raise NameError("Please enter either manual or automatic.")
         
-        self.installNodeAttr('__'+GS_attr+'__', GS_dict)
-        self.GSnodeAttrInstall(GS_attr)
+        if n_or_e == 'n':
+            self.installNodeAttr('__'+GS_attr+'__', GS_dict)
+            self.GSnodeAttrInstall(GS_attr)
+        elif n_or_e == 'e':
+            self.installEdgeAttr('__'+GS_attr+'__', GS_dict)
+            self.GSedgeAttrInstall(GS_attr)
     
     def discrete_shape(self, attrName):
         m_or_a = input("Manual or Automatic shape picking: ")
@@ -321,31 +608,36 @@ class Graph:
     #INFRASTRUCTURE METHODS (not for user)##################
     ########################################################
     
-    def __init__(self, nodes, edges, isDirected=False, isWeighted=False):
-        self.isDirected = isDirected
-        self.isWeighted = isWeighted
-
-        self.node_dir = set()
-        self.edge_dir = set()
-        self.naive_nodes = nodes
-        self.naive_edges = edges
-        
-        self.nodes = self.init_nodes(nodes)
-        self.edges = self.init_edges(edges)
-        
-        self.GSnodeDir = set()
-        self.GSedgeDir = set()
+    def __init__(self, nodes, edges, isDirected):
+        self.nodes = nodes
+        self.edges = edges
+        self.init_dirs()
         
         self.GSnodeAttrs = self.initGSnodeAttrs()
         self.GSedgeAttrs = self.initGSedgeAttrs()
         
-        self.GStitle = None
-        self.GSdesc = None
-        self.GStags = None
+        self.GSnodeDir = set()
+        self.GSedgeDir = set()
+        self.init_GS_dirs()
+        
 
-        if nx_import:
-            self.init_nx()
+        
 
+    def init_dirs(self):
+        self.edge_dir = set(dir(self.edges[0]))
+        self.node_dir = set(dir(self.nodes[0]))
+
+    def init_GS_dirs(self):
+        for s in self.edge_dir:
+            if len(s) >= 2 and s[0:2] == '__' and s[-2:] == '__':
+                self.GSedgeDir.add(s[2:-2])
+        for s in self.node_dir:
+            if len(s) >= 2 and s[0:2] == '__' and s[-2:] == '__':
+                self.GSnodeDir.add(s[2:-2])
+        self.GSattrsUpdate()
+
+
+    
     def __dir__(self):
         return [set_to_list(self.node_dir), set_to_list(self.edge_dir)]
 
@@ -360,9 +652,6 @@ class Graph:
             node_ls.append(Node(n))
         node_ls.sort(key=lambda x: x.get('ID'))    #sorts the node list by ID
         return node_ls
-    
-    def init_node_dir(self):
-        self.node_dir.add('ID')
     
     def newNodeAttr(self,attrName,loud=False):
         #helper function for installNodeAttr
@@ -397,18 +686,10 @@ class Graph:
                 edge_ls.append(Edge(e[0],e[1]))
         return edge_ls
     
-    def init_edge_dir(self):
-        self.edge_dir.add('nodes')
-        self.edge_dir.add('ID')
-        self.edge_dir.add('source')
-        self.edge_dir.add('target')
-        if self.isWeighted:
-            self.edge_dir.add('weight')
-    
     def newEdgeAttr(self,attrName,loud=False):
         for e in self.edges:
             e.newAttr(attrName,loud)
-        self.node_dir.add(attrName)
+        self.edge_dir.add(attrName)
     
     def putEdgeAttrs(self, attrName, attrDict, loud=False):
         for e in self.edges:
@@ -499,37 +780,25 @@ class Graph:
         return self.normByAttr(attrName, 'e', loud)
 
     def normByAttr(self, attrName, n_or_e='n', loud=False):
-        #generalized method for getting a dictionary with normalized values according to the given attribute
-        #the keys of the dictionary are the ID's of the objects.
         d = {}
-        if n_or_e == 'n':
-            working_group = self.nodes
-        elif n_or_e == 'e':
-            working_group = self.edges
-        else:
-            raise NameError('n_or_e must be either \'n\' for nodes or \'e\' for edges.')
+        working_group = self.check_nore(n_or_e)
         
         for x in working_group:
             d[x.get('ID')] = float('nan')
         
-        for x in working_group:
-            if x.get(attrName,loud) != None:
-                a_max = x.get(attrName,loud)
-                max_x = x
-                break
-        else:
-            raise TypeError('Could not normalize by attribute ' + str(attrName) + 'because all nodes have None for that attribute.')
+        biggest = max(working_group, key = lambda x: x.get(attrName)).get(attrName)
+        smallest = min(working_group, key = lambda x: x.get(attrName)).get(attrName)
         
-        for x in working_group:
-            if x.get(attrName,loud) != None and x.get(attrName,loud) > a_max:
-                a_max = x.get(attrName,loud)
-                max_x = x
+        def normalizer(v, my_max, my_min):
+            norm = (v - my_min) / float(my_max - my_min)
+            return norm
         
         for x in working_group:
             if x.get(attrName,loud) != None:
-                d[x.get('ID')] = x.get(attrName,loud)/float(a_max)
+                d[x.get('ID')] = normalizer(x.get(attrName), biggest, smallest)
         
         return d
+
     
     def discretizeAttr(self, attrName, n_or_e='n'):
         working_group = self.check_nore(n_or_e)
@@ -657,13 +926,13 @@ class Graph:
         json_filename = 'graphspace_upload.json'
         user = input("Graphspace username: ")
         pw = input("Graphspace password: ")
-        if title == None and self.GStitle == None:
+        if title == None:
             title = input("Graph title: ")
         if graphID == None:
             graphID = input("Graph ID: ")
-        if desc == None and self.GSdesc == None:
+        if desc == None:
             desc = input("Graph description: ")
-        if tags == None and self.GStags == None:
+        if tags == None:
             tag_str = input("Graph tags (separated by comma): ")
             tags = tag_str.strip().split(',')
         
@@ -802,6 +1071,7 @@ class GenericDynamicObject:
         #for example, if you made a node whose variable name is a, then to see the directory you would give dir(a) in python interactive.
         return set_to_list(self.dir_set)
 
+
     
     ########################
     #Non-structural methods#
@@ -819,40 +1089,43 @@ class Node(GenericDynamicObject):
         self.newAttr('ID')
         self.put('ID', ID)
 
+    def __str__(self):
+        s = str(self.get('ID')) + ': ' + str(self.d)
+        return s
 
 class Edge(GenericDynamicObject):
     #Edges are instantiated using a GenericDynamicObject initialized with a source and target (arbitrary if undirected), and optionally a weight and direction.
     #All edges have 'source' 'target' and 'ID' in their directory by default. 
     #If the edge is not directed, 'source' and 'target' are determined by alphabetization. This also factors into the 'ID' attribute.
-    #For edges, 'ID' is a string composed of the source string and the target string, delimited by a semicolon.
-    def __init__(self, s, t, weight=None, directed=False):
+    #For edges, 'ID' is a string composed of the source string and the target string, delimited by '_;_'.
+    def __init__(self, s, t, directed=False):
         self.d = {}
         self.dir_set = set()
         self.newAttr('source')
         self.newAttr('target')
+        self.newAttr('ID')
+        
         if directed:
             self.put('source', s)
             self.put('target', t)
+            self.put('ID',str(s)+"_;_"+str(t))
+            
         else:      #if the edges are not directed, then the source and target are determined by alphabetical order (just for the sake of consistency)
-            first = max(str(s),str(t))
-            second = min(str(s),str(t))
+            if max(str(s),str(t)) == str(s):
+                first = s
+                second = t
+            else:
+                first = t
+                second = s
             self.put('source',first)
             self.put('target',second)
-        
-        if weight:
-            self.newAttr('weight')
-            self.put('weight', weight)
-        self.newAttr('nodes')
-        self.put('nodes',set([s,t]))
-        
-        self.newAttr('ID')
-        if directed:
-            self.put('ID',str(s)+";"+str(t))
-        else:      #if the edges are not directed, then the ID is the two strings, alphabetatized with a ; delimiter
-            self.put('ID',first+";"+second)
+            self.put('ID',str(first)+"_;_"+str(second))
+    
+    def __str__(self):
+        s = '(' + str(self.get('source')) + ', ' + str(self.get('target')) + '): ' + str(self.d)
+        return s
 
-            
-            
+
 def discrete_coloring(n):
     if n > 1023:
         raise ValueError
