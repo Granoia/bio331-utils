@@ -3,6 +3,7 @@ import math
 import json_utils
 import graphspace_utils
 import numpy as np
+import getpass
 
 try:
     import matplotlib
@@ -306,6 +307,21 @@ def parse_RGB_input(user_query):
     
     return RGB  
 
+def restricted_input(prompt, ls=None,case_sensitive=False):
+    if ls == None:
+        return input(prompt)
+    
+    if case_sensitive:
+        candidate = input(prompt)
+    else:
+        candidate = input(prompt).lower()
+    if candidate not in ls:
+        raise NameError("The given input was not found in the list of accepted inputs. Please enter one of the following: " + str(ls))
+    else:
+        return candidate
+    
+    
+    
 shape_ls = ["rectangle", "ellipse", "triangle", "pentagon", "hexagon", "heptagon", "octagon", "star", "diamond", "vee", "rhomboid", "roundrectangle"]        
 def pick_shape(n):
     if n > 11:
@@ -324,6 +340,24 @@ class Graph:
     #####################
     #user methods########
     #####################
+    
+    #installNodeAttr and installEdgeAttr should be here
+    #removeNodeAttr and removeEdgeAttr should be here
+    
+    
+    def change_default(self, GS_attr, value):
+        #needs testing
+        if GS_attr not in (list(self.GSnodeDefaults.keys()) + list(self.GSedgeDefaults.keys())):
+            raise NameError("You can't set '" + GS_attr + "' as a default attribute. Default attributes you can set are:\nNodes:\n" + str(list(self.GSnodeDefaults.keys())) + "\nEdges:\n" + str(list(self.GSedgeDefaults.keys())))
+        elif GS_attr in list(self.GSnodeDefaults.keys()):
+            self.GSnodeDefaults[GS_attr] = value
+        else:
+            self.GSedgeDefaults[GS_attr] = value
+    
+    def display_defaults(self):
+        print('Node defaults:\n' + str(self.GSnodeDefaults))
+        print('\nEdge defaults:\n' + str(self.GSedgeDefaults))
+    
     
     def visualize(self, attrName):
         if attrName in self.node_dir and attrName in self.edge_dir:
@@ -346,7 +380,6 @@ class Graph:
         
         else:
             self.edge_visualize(attrName)
-    
 
     
     def export(self, edgefile=None, nodefile=None, delimiter='\t'):
@@ -436,21 +469,21 @@ class Graph:
 
     def scaleEdgeWidth(self, attrName):
         max_size = int(input("Maximum edge width: "))
+        min_size = 2
         normDict = self.normEdgeAttr(attrName)
-        if max_size < 12:
-            max_size = 12
+        if max_size < min_size:
+            max_size = min_size
         
-        diff = max_size - 12
+        diff = max_size - min_size
         
         size_dict = {}
         
         for e in normDict:
-            size_dict[e] = 12 + diff*normDict[e] 
+            size_dict[e] = min_size + diff*normDict[e] 
         self.installEdgeAttr('__width__',size_dict)
         self.GSedgeAttrInstall('width')
             
     def edge_d(self, attrName):
-        #needs to be tested
         GS_attr = input('What GraphSpace visual attribute would you like to visualize by? Please enter one of the following: \nline_color \tline_style\n>>> ').lower()
         if GS_attr == 'line_color':
             self.discrete_color(attrName, 'line_color', 'e')
@@ -488,8 +521,7 @@ class Graph:
             self.scaleGradient(attrName, color1, color2, GS_attr)
         
         elif GS_attr == "background_blacken":
-            wb_input = input('whiten, blacken, or both: ')
-            self.scaleBlacken(attrName,wb_input)
+            self.scaleBlacken(attrName)
             
 
     def scaleGradient(self, attrName, color1, color2, GS_attr, n_or_e='n', loud=False):
@@ -516,9 +548,47 @@ class Graph:
             self.GSedgeAttrInstall(GS_attr, loud)
 
     
-    def scaleBlacken(self, wb_input):
-        #pass
-        raise NotImplementedError
+    def scaleBlacken(self, attrName):
+        #not tested yet
+        b_w_both = restricted_input("Would you like to blacken, whiten, or both? Please enter one of the following: \nblacken\twhiten\tboth\n>>> ",['blacken','whiten','both']).lower()
+        if b_w_both not in ['blacken','whiten','both']:
+            raise NameError("Please enter blacken, whiten, or both.")
+        
+        normDict = self.normByAttr(attrName, 'n')
+        
+        
+        if b_w_both == 'blacken':
+            i = restricted_input("Should lower values for attribute " + str(attrName) + " be more black or less black? Please input: \n1 for more black\t2 for less black\n>>> ",['1','2'])
+            if i == 1:
+                for k in normDict:
+                    normDict[k] = (normDict[k] - 1) * -1
+            else:
+                #then the normalized dictionary in its current form is appropriate, so do nothing
+                pass
+                
+            
+        elif b_w_both == 'whiten':
+            i = restricted_input("Should lower values for attribute " + str(attrName) + " be more white or less white? Please input: \n1 for more white\t2 for less white\n>>> ",['1','2'])
+            if i == 1:
+                for k in normDict:
+                    normDict[k] = normDict[k] - 1
+            else:
+                for k in normDict:
+                    normDict[k] = normDict[k] * -1
+            
+        elif b_w_both == 'both':
+            i = restricted_input("Should lower values for attribute " + str(attrName) + " be black or white? Please input one of the following:\nblack\t\white\n>>> ",['black','white'])
+            if i == 'white':
+                for k in normDict:
+                    normDict[k] = (normDict[k] - 0.5) * 2
+            else:
+                for k in normDict:
+                    normDict[k] = ((normDict[k] * -1) + 0.5) * 2
+        
+        self.installNodeAttr('__background_blacken__', normDict)
+        self.GSnodeAttrInstall('background_blacken')
+        
+        
             
     def scaleBySize(self, attrName):
         max_size = int(input("Maximum node size: "))
@@ -619,6 +689,14 @@ class Graph:
         self.GSnodeDir = set()
         self.GSedgeDir = set()
         self.init_GS_dirs()
+        
+        if isDirected:
+            t_arrow_shape = 'triangle'
+        else:
+            t_arrow_shape = 'none'
+        
+        self.GSnodeDefaults = dict([('background_color','#ffff66'),('height',60),('width',60),('shape','ellipse'),('background_blacken',0),('background_opacity',1),('border_width',4),('border_style','solid'),('border_color','black'),('border_opacity',1),('color','#000000'),('text_transform','none'),('text_halign','center'),('text_valign','center')])
+        self.GSedgeDefaults = dict([('line_color','#000000'),('line_style','solid'),('mid_source_arrow_color','#000000'),('mid_source_arrow_shape','none'),('mid_source_arrow_fill','filled'),('source_arrow_color','#000000'),('source_arrow_shape','none'),('source_arrow_fill','filled'),('target_arrow_color','#000000'),('target_arrow_shape',t_arrow_shape),('target_arrow_fill','filled'),('mid_target_arrow_color','#000000'),('mid_target_arrow_shape','none'),('mid_target_arrow_fill','filled')])
         
 
         
@@ -919,13 +997,46 @@ class Graph:
         for attr in self.GSedgeDir:
             self.GSedgeAttrInstall(attr,loud)
         
+    def defaultizeNodes(self):
+        #needs testing
+        to_be_added = set(self.GSnodeDefaults.keys()) - self.GSnodeDir
+        to_be_looked = self.GSnodeDir
+        d = dict(self.GSnodeAttrs)
         
+        for GS_attr in to_be_added:
+            for n in self.nodes:
+                d[n.get('ID')][GS_attr] = self.GSnodeDefaults[GS_attr]
         
+        for GS_attr in to_be_looked:
+            if d[n.get('ID')][GS_attr] in [None, float('nan')]:
+                d[n.get('ID')][GS_attr] = self.GSnodeDefaults[GS_attr]
+        
+        return d
+    
+    def defaultizeEdges(self):
+        #needs testing
+        to_be_added = set(self.GSedgeDefaults.keys()) - self.GSedgeDir
+        to_be_looked = self.GSedgeDir
+        d = dict(self.GSedgeAttrs)
+        
+        for GS_attr in to_be_added:
+            for e in self.edges:
+                d[e.get('source')][e.get('target')][GS_attr] = self.GSedgeDefaults[GS_attr]
+        
+        for GS_attr in to_be_looked:
+            for e in self.edges:
+                if d[e.get('source')][e.get('target')][GS_attr] in [None, float('nan')]:
+                    d[e.get('source')][e.get('target')][GS_attr] = self.GSedgeDefaults[GS_attr]
+        
+        return d
+    
+
+    
     def uploadGraph(self, title=None, graphID=None, desc=None, tags=None):
         self.GSattrsUpdate()
         json_filename = 'graphspace_upload.json'
         user = input("Graphspace username: ")
-        pw = input("Graphspace password: ")
+        pw = getpass.getpass("Graphspace password: ")
         if title == None:
             title = input("Graph title: ")
         if graphID == None:
@@ -936,16 +1047,25 @@ class Graph:
             tag_str = input("Graph tags (separated by comma): ")
             tags = tag_str.strip().split(',')
         
+        if 'quit' in [title,graphID,desc,tag_str]:
+            return
+        
         n_ls = [x.get('ID') for x in self.nodes]
         
         e_ls = []
         for e in self.edges:
             e_ls.append([e.get('source'), e.get('target')])
         
-        data = json_utils.make_json_data(n_ls, e_ls, self.GSnodeAttrs, self.GSedgeAttrs, title, desc, tags)
-        json_utils.write_json(data,json_filename)
-        graphspace_utils.postGraph(graphID, json_filename, user, pw)
+        GS_nodes = self.defaultizeNodes()
+        GS_edges = self.defaultizeEdges()
         
+        try:
+            data = json_utils.make_json_data(n_ls, e_ls, GS_nodes, GS_edges, title, desc, tags)
+            json_utils.write_json(data,json_filename)
+            graphspace_utils.postGraph(graphID, json_filename, user, pw)
+        except Exception as e:
+            print(e)
+            
         
     ###############################################################
     #SCALABILITY HELPER METHODS (not for user)#####################
