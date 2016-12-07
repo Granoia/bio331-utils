@@ -1,5 +1,6 @@
 #customized utils
 import math
+import numpy
 import json_utils
 import graphspace_utils
 import numpy as np
@@ -273,10 +274,15 @@ def vector_to_RGB(vector):
     for i in vector:
         if i > 255 or i < 0:
             raise ValueError("Error! Tried to convert vector " + str(vector) + " to RGB hex string but vector value " + str(i) + " was not between 0 and 255.")
-    
+    for e in vector:
+        if math.isnan(e):
+            return None
+
     return '#{:02x}{:02x}{:02x}'.format(int(vector[0]),int(vector[1]),int(vector[2]))
 
 def getGColor(color1, color2, normVal):
+    if math.isnan(normVal):
+        return None
     gradient_vector = vector_add(scalar_mult((1-normVal),color1), scalar_mult(normVal,color2))     #in plain mathematics: (1-normVal)*color1 + (normVal)*color2 
     return vector_to_RGB(gradient_vector)
 
@@ -324,11 +330,28 @@ def restricted_input(prompt, ls=None,case_sensitive=False):
     
 shape_ls = ["rectangle", "ellipse", "triangle", "pentagon", "hexagon", "heptagon", "octagon", "star", "diamond", "vee", "rhomboid", "roundrectangle"]        
 def pick_shape(n):
+    if n == None:
+        return None
     if n > 11:
         raise ValueError("Too many discrete groups to visualize by shape (GraphSpace has 12 unique node shapes)")
     else:
         return shape_ls[n]
     
+def check_key(s):
+    #helper that checks if a string has leading and trailing double underscores e.g. '__line_width__'
+    if len(s) > 4 and (s[:2] == '__' and s[-2:] == '__'):
+        return True
+    else:
+        return False
+
+def check_control_str(given, want):
+    #helper for display
+        if given == 1:
+            return True
+        if given == want:
+            return True
+        else:
+            return False
     
 class Graph:
     """
@@ -340,13 +363,141 @@ class Graph:
     #####################
     #user methods########
     #####################
+    #future note for reorganization - user methods should include the following functions:
+    #visualize()
+    #display()
+    #default()
+    #nodeInstall()
+    #edgeInstall() future note: these should both make it so that the user can't add an attribute beginning and ending with '__' (except maybe using an advanced options boolean argument?)
+    #edgeGet()
+    #nodeGet()
+    #remove()
+    #export()
+    #upload()
     
     #installNodeAttr and installEdgeAttr should be here
     #removeNodeAttr and removeEdgeAttr should be here
     
+    def nodeGet(self, attrName):
+        return self.getNodeAttr(attrName)
+    
+    def edgeGet(self, attrName):
+        return self.getEdgeAttr(attrName)
+    
+    def nodeInstall(self, attrName, valueDict):
+        if check_key(attrName):
+            raise NameError("Please do not use leading and trailing double underscores (e.g. '__my_attribute__') in your attribute names.")
+        else:
+            self.installNodeAttr(attrName, valueDict)
+    
+    def edgeInstall(self, attrName, valueDict):
+        if check_key(attrName):
+            raise NameError("Please do not use leading and trailing double underscores (e.g. '__my_attribute__') in your attribute names.")
+        self.installEdgeAttr(attrName, valueDict)
+    
+    def display(self, c=1):
+        if check_control_str(c,'data'):
+            print("Directory of Node Data Attributes:\n"+str(self.node_dir)+"\n\n")
+            print("Directory of Edge Data Attributes:\n"+str(self.edge_dir)+"\n\n")
+        
+        if check_control_str(c, 1):
+            print("####################################################")
+            print("####################################################\n\n")
+        
+        if check_control_str(c, 'visual'):
+            print("Directory of User-Modified Node GraphSpace Visual Attributes:\n"+str(self.GSnodeDir)+"\n\n")
+            print("Directory of User-Modified Edge GraphSpace Visual Attributes:\n"+str(self.GSedgeDir)+"\n\n")
+        
+        if check_control_str(c,1):
+            print("####################################################")
+            print("####################################################\n\n")
+        
+        if check_control_str(c,'default'):
+            print("Default Node GraphSpace Visual Attributes:\n"+str(self.GSnodeDefaults)+"\n\n")
+            print("Default Edge GraphSpace Visual Attributes:\n"+str(self.GSedgeDefaults)+"\n\n")
+        
+        if c == 'nodes':
+            for n in self.nodes:
+                print(str(n))
+        
+        if c == 'edges':
+            for e in self.edges:
+                print(str(e))
+            
+    
+    def remove(self, attrName):
+        if attrName in (self.node_dir | self.edge_dir) and attrName in (self.GSnodeDir | self.GSedgeDir):
+            d_or_v = restricted_input("Do you mean the data attribute or the visual attribute? Please enter one of the following:\ndata\tvisual\n>>> ",['data','visual'])
+        
+        if attrName in self.node_dir and attrName in self.edge_dir:
+            n_or_e = restricted_input("Do you mean the node attribute or the edge attribute? Please enter one of the following:\nnode\tedge\n>>> ",['node','edge'])
+        elif attrName in self.node_dir:
+            n_or_e = 'node'
+        elif attrName in self.edge_dir:
+            n_or_e = 'edge'
+        elif '__' + attrName + '__' in self.node_dir:
+            n_or_e = 'node'
+        elif '__' + attrName + '__' in self.edge_dir:
+            n_or_e = 'edge'
+        else:
+            return NameError("The given attribute '" + str(attrName) + "' was not found in the Graph directory.")
+        
+        if n_or_e == 'node':
+            n_or_e = 'n'
+        else:
+            n_or_e = 'e'
+        
+        if check_key(attrName):
+            #if the input string was a GS_key, e.g. '__line_width__', then we should remove both the GS visual attribute and its corresponding data attribute
+            self.removeGS(attrName[2:-2])
+            self.removeAttr(attrName, n_or_e)
+            return
+        
+        elif attrName in (self.GSnodeDir | self.GSedgeDir):
+            #if the input string was a GS attr, e.g. 'line_width', then we should remove both the GS visual attribute and its corresponding data attribute
+            if d_or_v == 'data':
+                #unless for some reason the user made a data attribute with the same name as a visual attribute, in which case we just want to remove the data attribute
+                #a situation for which I am accommodating because I'm a masochist, apparently
+                pass
+            else:
+                self.removeGS(attrName)
+                self.removeAttr('__'+attrName+'__', n_or_e)
+                return
+        
+        #otherwise it's just a data attribute so we remove it.
+        self.removeAttr(attrName, n_or_e)
+        return    
+    
+    def removeGS(self, GS_attr):
+        if GS_attr not in (self.GSnodeDir | self.GSedgeDir):
+            raise NameError("The given visual attribute '" + str(GS_attr) + "' was not found in the directory of modified visual attributes.")
+        elif GS_attr in self.GSnodeDir:
+            self.GSnodeDir = self.GSnodeDir - set([str(GS_attr)])
+        elif GS_attr in self.GSedgeDir:
+            self.GSedgeDir = self.GSedgeDir - set([str(GS_attr)])
+    
+    def removeAttr(self, attrName, n_or_e):
+        if attrName not in (self.node_dir | self.edge_dir):
+            raise NameError("The given attribute '" + str(attrName) + "' was not found in the Graph directory.")
+        elif n_or_e == 'n':
+            self.node_dir = self.node_dir - set([attrName])
+            for n in self.nodes:
+                n.delete(attrName)
+        elif n_or_e == 'e':
+            self.edge_dir = self.edge_dir - set([attrName])
+            for e in self.edges:
+                e.delete(attrName)
+        else:
+            raise NameError("removeAttr() argument n_or_e must be set to either 'n' or 'e'")
+        
+    def default(self, GS_attr=None, value=None):
+        if GS_attr == None and value==None:
+            self.display('default')
+            print("Input default(<GS_attr>,<new default value>) to change the default value of any listed visual attribute.")
+        else:
+            self.change_default(GS_attr, value)
     
     def change_default(self, GS_attr, value):
-        #needs testing
         if GS_attr not in (list(self.GSnodeDefaults.keys()) + list(self.GSedgeDefaults.keys())):
             raise NameError("You can't set '" + GS_attr + "' as a default attribute. Default attributes you can set are:\nNodes:\n" + str(list(self.GSnodeDefaults.keys())) + "\nEdges:\n" + str(list(self.GSedgeDefaults.keys())))
         elif GS_attr in list(self.GSnodeDefaults.keys()):
@@ -354,9 +505,8 @@ class Graph:
         else:
             self.GSedgeDefaults[GS_attr] = value
     
-    def display_defaults(self):
-        print('Node defaults:\n' + str(self.GSnodeDefaults))
-        print('\nEdge defaults:\n' + str(self.GSedgeDefaults))
+    def upload(self):
+        self.uploadGraph()
     
     
     def visualize(self, attrName):
@@ -367,7 +517,7 @@ class Graph:
         elif attrName in self.edge_dir:
             n_or_e = 'e'
         else:
-            raise NameError("Please input 'n' or 'e'")
+            raise NameError("The given attribute was not found in either of the data directories. (use my_graph.display('data') to print the data directories if you want to see what's in them)")
         
         if n_or_e == 'n':
             c_or_d = input('Is the attribute to be visualized continuous or discrete: ').lower()
@@ -479,7 +629,10 @@ class Graph:
         size_dict = {}
         
         for e in normDict:
-            size_dict[e] = min_size + diff*normDict[e] 
+            if math.isnan(normDict[e]):
+                size_dict[e] = None
+            else:
+                size_dict[e] = min_size + diff*normDict[e] 
         self.installEdgeAttr('__width__',size_dict)
         self.GSedgeAttrInstall('width')
             
@@ -491,6 +644,8 @@ class Graph:
             attr_dict, group_dict = self.discretizeAttr(attrName,n_or_e='e')
             GS_dict = {}
             for g in group_dict:
+                if g == None:
+                    continue
                 style = input("Line style for group '" + str(g) + "' (choose from [solid, dotted, dashed]) (enter 'quit' to cancel): ")
                 if style == 'quit':
                     return
@@ -632,6 +787,8 @@ class Graph:
         
         elif m_or_a.lower() == 'manual':
             for g in group_dict:
+                if g == None:
+                    continue
                 color = parse_RGB_input("Color for group \'" + str(g) + "\' (RGB vector e.g. [255,0,0]) (type 'quit' to cancel): ")
                 if color == 'quit':
                     return
@@ -660,13 +817,14 @@ class Graph:
         
         elif m_or_a.lower() == 'manual':
             for g in group_dict:
+                if g == None:
+                    continue
                 shape = input("Shape for group '" + str(g) + "' (choose from " + str(shape_ls) + ") (enter 'quit' to cancel): ")
                 if shape == 'quit':
                     return
                 if shape not in shape_ls:
                     raise NameError("Please choose from one of the shapes on the list.")
                 for n in group_dict[g]:
-                    print(n)
                     GS_dict[n] = shape
         else:
             raise NameError("Please enter either manual or automatic.")
@@ -681,6 +839,8 @@ class Graph:
     def __init__(self, nodes, edges, isDirected):
         self.nodes = nodes
         self.edges = edges
+        self.isDirected = isDirected
+        
         self.init_dirs()
         
         self.GSnodeAttrs = self.initGSnodeAttrs()
@@ -695,7 +855,7 @@ class Graph:
         else:
             t_arrow_shape = 'none'
         
-        self.GSnodeDefaults = dict([('background_color','#ffff66'),('height',60),('width',60),('shape','ellipse'),('background_blacken',0),('background_opacity',1),('border_width',4),('border_style','solid'),('border_color','black'),('border_opacity',1),('color','#000000'),('text_transform','none'),('text_halign','center'),('text_valign','center')])
+        self.GSnodeDefaults = dict([('background_color','#ffff66'),('height',60),('width',60),('shape','ellipse'),('background_blacken',0),('background_opacity',1),('border_width',3),('border_style','solid'),('border_color','black'),('border_opacity',1),('color','#000000'),('text_transform','none'),('text_halign','center'),('text_valign','center')])
         self.GSedgeDefaults = dict([('line_color','#000000'),('line_style','solid'),('mid_source_arrow_color','#000000'),('mid_source_arrow_shape','none'),('mid_source_arrow_fill','filled'),('source_arrow_color','#000000'),('source_arrow_shape','none'),('source_arrow_fill','filled'),('target_arrow_color','#000000'),('target_arrow_shape',t_arrow_shape),('target_arrow_fill','filled'),('mid_target_arrow_color','#000000'),('mid_target_arrow_shape','none'),('mid_target_arrow_fill','filled')])
         
 
@@ -737,14 +897,6 @@ class Graph:
         for n in self.nodes:
             n.newAttr(attrName,loud)
         self.node_dir.add(attrName)
-
-    
-    def putNodeAttrs(self,attrName, attrDict, loud=False):
-        #helper function for installNodeAttr
-        #give a dictionary whose keys are node IDs and whose values are the values for the desired attribute as attrDict
-        #this function uses put() to update the values of the given attribute for each node.
-        for n in self.nodes:
-            n.put(attrName,attrDict[n.get('ID')],loud)
     
     
     #
@@ -768,10 +920,6 @@ class Graph:
         for e in self.edges:
             e.newAttr(attrName,loud)
         self.edge_dir.add(attrName)
-    
-    def putEdgeAttrs(self, attrName, attrDict, loud=False):
-        for e in self.edges:
-            e.put(attrName, attrDict[e.get('ID')],loud)
     
     
     
@@ -837,12 +985,21 @@ class Graph:
             raise NameError('n_or_e must be either \'n\' for nodes or \'e\' for edges.')
         
         for x in working_group:
-            x.put(attrName, attrDict[x.get('ID')])
+            try:
+                x.put(attrName, attrDict[x.get('ID')])
+            except KeyError:
+                #if attrDict doesn't mention one of the objects in the working group, we want it to leave already set values the way they are, and have not yet set values be set to None
+                if attrName in x.d.keys():   #this violates an abstraction barrier but it's okay just this once right?
+                    pass
+                else:
+                    x.put(attrName, None)
+                if loud:
+                    raise UserWarning("The given attribute dictionary did not contain " + str(x.__class__.__name__) + " " + str(x.get('ID')) + ". If attribute " + str(attrName) + " was already set, it was left alone. If it wasn't set, it was set to None.")
         
-    def putNodeAttr(self, attrName, attrDict, loud=False):
+    def putNodeAttrs(self, attrName, attrDict, loud=False):
         self.putAttrs(attrName,attrDict,'n',loud)
     
-    def putEdgeAttr(self, attrName, attrDict, loud=False):
+    def putEdgeAttrs(self, attrName, attrDict, loud=False):
         self.putAttrs(attrName,attrDict,'e',loud)
     
     #########################################################
@@ -856,7 +1013,7 @@ class Graph:
     def normEdgeAttr(self,attrName,loud=False):
         #normalizes the values for the given edge attribute and returns the normalized values as a dictionary
         return self.normByAttr(attrName, 'e', loud)
-
+        
     def normByAttr(self, attrName, n_or_e='n', loud=False):
         d = {}
         working_group = self.check_nore(n_or_e)
@@ -864,11 +1021,37 @@ class Graph:
         for x in working_group:
             d[x.get('ID')] = float('nan')
         
-        biggest = max(working_group, key = lambda x: x.get(attrName)).get(attrName)
-        smallest = min(working_group, key = lambda x: x.get(attrName)).get(attrName)
+        all_bools = True
+        for x in working_group:
+            if x.get(attrName) not in [True, False, None]:
+                all_bools = False
+        if all_bools:
+            for x in working_group:
+                if x.get(attrName) == True:
+                    d[x.get('ID')] = 1
+                elif x.get(attrName) == False:
+                    d[x.get('ID')] = 0
+                else:
+                    d[x.get('ID')] = float('nan')
+                
+                    
+        
+        def key_func(x):
+            if type(x.get(attrName)) not in [float, int]:
+                return float('nan')
+            else:
+                return x.get(attrName)
+        
+        nums = [key_func(x) for x in working_group]
+        
+        biggest = numpy.nanmax(nums)
+        smallest = numpy.nanmin(nums)
         
         def normalizer(v, my_max, my_min):
-            norm = (v - my_min) / float(my_max - my_min)
+            if check_float(v):
+                norm = (v - my_min) / float(my_max - my_min)
+            else:
+                norm = float('nan')
             return norm
         
         for x in working_group:
@@ -890,9 +1073,13 @@ class Graph:
                 group_dict[current].append(x.get('ID'))
         i = 0
         for g in group_dict:
-            for x in group_dict[g]:
-                attr_dict[x] = i
-            i += 1
+            if g == None:
+                for x in group_dict[g]:
+                    attr_dict[x] = None
+            else:
+                for x in group_dict[g]:
+                    attr_dict[x] = i
+                i += 1
         return attr_dict, group_dict    
 
     def set_to_boolDict(self,s):
@@ -913,20 +1100,6 @@ class Graph:
         return node_d
 
     def get_adj_ls(self):
-        #returns a naive adjacency list based on the data given by parse_input()
-        d = {}
-        for n in self.naive_nodes:
-            d[n] = []
-
-        for e in self.naive_edges:
-            if not self.isDirected:
-                d[e[0]].append(e[1])
-                d[e[1]].append(e[0])
-            else:
-                d[e[0]].append(e[1])
-        return d
-
-    def better_adj_ls(self):
         d = {}
         for n in self.nodes:
             d[n.get('ID')] = []
@@ -998,7 +1171,6 @@ class Graph:
             self.GSedgeAttrInstall(attr,loud)
         
     def defaultizeNodes(self):
-        #needs testing
         to_be_added = set(self.GSnodeDefaults.keys()) - self.GSnodeDir
         to_be_looked = self.GSnodeDir
         d = dict(self.GSnodeAttrs)
@@ -1008,13 +1180,12 @@ class Graph:
                 d[n.get('ID')][GS_attr] = self.GSnodeDefaults[GS_attr]
         
         for GS_attr in to_be_looked:
-            if d[n.get('ID')][GS_attr] in [None, float('nan')]:
+            if d[n.get('ID')][GS_attr] == None:
                 d[n.get('ID')][GS_attr] = self.GSnodeDefaults[GS_attr]
         
         return d
     
     def defaultizeEdges(self):
-        #needs testing
         to_be_added = set(self.GSedgeDefaults.keys()) - self.GSedgeDir
         to_be_looked = self.GSedgeDir
         d = dict(self.GSedgeAttrs)
@@ -1025,7 +1196,7 @@ class Graph:
         
         for GS_attr in to_be_looked:
             for e in self.edges:
-                if d[e.get('source')][e.get('target')][GS_attr] in [None, float('nan')]:
+                if d[e.get('source')][e.get('target')][GS_attr] == None:
                     d[e.get('source')][e.get('target')][GS_attr] = self.GSedgeDefaults[GS_attr]
         
         return d
@@ -1093,7 +1264,7 @@ class Graph:
     ##################################################
     
     def getNodeDegree(self,loud=False):
-        adj_ls = self.better_adj_ls()
+        adj_ls = self.get_adj_ls()
         deg_dict = {}
         for n in self.nodes:
             deg_dict[n.get('ID',loud)] = len(adj_ls[n.get('ID',loud)])
@@ -1185,21 +1356,16 @@ class GenericDynamicObject:
         else:
             self.d[attrName] = val
     
+    def delete(self, attrName):
+        self.dir_set = self.dir_set - set([attrName])
+        self.d.pop(attrName)
+    
     def __dir__(self):
         #gives the directory in list form.
         #this is magic class syntax. access this method via the Python inbuilt function dir()
         #for example, if you made a node whose variable name is a, then to see the directory you would give dir(a) in python interactive.
         return set_to_list(self.dir_set)
 
-
-    
-    ########################
-    #Non-structural methods#
-    ########################
-    
-    def getGColor(self, color1, color2, normVal):
-        gradient_vector = vector_add(scalar_mult((1-normVal),color1), scalar_mult(normVal,color2))     #in plain mathematics: (1-normVal)*color1 + (normVal)*color2 
-        return vector_to_RGB(gradient_vector)
         
 class Node(GenericDynamicObject):
     #Nodes are instantiated using a GenericDynamicObject initialized with an ID.
@@ -1247,6 +1413,8 @@ class Edge(GenericDynamicObject):
 
 
 def discrete_coloring(n):
+    if n == None:
+        return None
     if n > 1023:
         raise ValueError
     color_ls = ["#FFFF00", "#1CE6FF", "#FF34FF", "#FF4A46", "#008941", "#006FA6", "#A30059",
