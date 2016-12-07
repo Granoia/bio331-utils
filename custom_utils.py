@@ -1175,17 +1175,14 @@ class Graph:
         to_be_looked = self.GSnodeDir
         d = dict(self.GSnodeAttrs)
         
-        print(to_be_added)
-        print()
-        print(to_be_looked)
-        
         for GS_attr in to_be_added:
             for n in self.nodes:
                 d[n.get('ID')][GS_attr] = self.GSnodeDefaults[GS_attr]
         
         for GS_attr in to_be_looked:
-            if d[n.get('ID')][GS_attr] == None:
-                d[n.get('ID')][GS_attr] = self.GSnodeDefaults[GS_attr]
+            for n in self.nodes:
+                if d[n.get('ID')][GS_attr] == None:
+                    d[n.get('ID')][GS_attr] = self.GSnodeDefaults[GS_attr]
         
         return d
     
