@@ -24,28 +24,33 @@ g = parse(edgefile='example_edges.txt', nodefile='example_nodes.txt')
 #data attributes.
 
 
-#If you want to do your own analysis on the example files, construct a dictionary whose keys are either node or edge IDs
-#(an edge ID is a string that looks like this: 'node1_;_node2' where node1 and 2 are in alphabetical order if the graph is undirected. 
-#This will be changed to a more graceful representation in future iterations of the package.
-#I've constructed an example of code that creates a properly formatted dictionary below.
-#The example supposes that you have some way of designating which data point goes to the appropriate node,
-#represented here through object notation.
+#If you want to do your own analysis on the example files, construct a 
+#dictionary whose keys are either node or edge IDs (an edge ID is a string 
+#that looks like this: 'node1_;_node2' where node1 and 2 are in alphabetical 
+#order if the graph is undirected. This will be changed to a more graceful 
+#representation in future iterations of the package. I've constructed an example 
+#of code that creates a properly formatted dictionary below.
+#The example supposes that you have some way of designating which data point goes 
+#to the appropriate node, represented here through object notation.
 
 d = {}
 for n in nodes:
     d[n.id] = n.data
-#NOTE: THESE 3 LINES OF CODE WILL NOT WORK IF YOU PUT THEM IN A SCRIPT, IT REPRESENTS CUSTOMIZED ANALYSIS THAT WOULD BE DONE SEPARATELY.
+#NOTE: THESE 3 LINES OF CODE WILL NOT WORK IF YOU PUT THEM IN A SCRIPT, IT 
+#REPRESENTS CUSTOMIZED ANALYSIS THAT WOULD BE DONE SEPARATELY.
 
-#from here it's a simple matter to do the rest of the process in an interactive session. Simply:
+#from here it's a simple matter to do the rest of the process in an interactive session:
 g.nodeInstall('my data attribute',d)
-#THIS ALSO WON'T WORK UNLESS YOU'VE CONSTRUCTED YOUR OWN DICTIONARY ACCORDING TO THE GUIDELINES ABOVE
-#FOR EXPERIMENTING WITH VISUALIZATION THAT DOESN'T REQUIRE CONSTRUCTING YOUR OWN DICTIONARY, KEEP READING BELOW
+#THIS ALSO WON'T WORK UNLESS YOU'VE CONSTRUCTED YOUR OWN DICTIONARY ACCORDING TO 
+#THE GUIDELINES ABOVE. FOR EXPERIMENTING WITH VISUALIZATION THAT DOESN'T REQUIRE 
+#CONSTRUCTING YOUR OWN DICTIONARY, KEEP READING BELOW
 
 
-#and from there we can pattern a GraphSpace visual attribute after the given data attribute:
+#and from there we can pattern a GraphSpace visual attribute after the data:
 g.visualize('my data attribute')
-#a rudimentary UI will ask you how you want to visualize the data. Support for inputting this information through the arguments
-#will be included in a future iteration of the package.
+#a rudimentary UI will ask you how you want to visualize the data. Support for 
+#inputting this information through the arguments will be included in a future 
+#iteration of the package.
 
 
 #then we upload to GraphSpace. 
@@ -54,7 +59,8 @@ g.upload()
 
 
 
-#And there you have it. My example files include a few data attributes that you can play around with. Try:
+#And there you have it. My example files include a few data attributes that 
+#you can play around with. Try:
 g.visualize('Team')
 g.visualize('Random 0-50')
 g.visualize('Node Degree')
@@ -79,13 +85,16 @@ g.display('edges')
 g.remove('__background_color__')
 g.remove('Team')
 
-#if you ever want to save a Mission Control session so that the graph and data attributes are immediately replicable, use export
+#if you ever want to save a Mission Control session so that the graph and data 
+#attributes are immediately replicable, use export
 g.export()
 
-#if you ever want to change the default visual attributes of the graph, use the default command:
+#if you ever want to change the default visual attributes of the graph, use 
+#the default command:
 g.default('background_color','#ffffff')
 g.default() #shows the current default settings
-#note that visual attributes patterned after a data attribute with None as an entry will take on the default settings
+#note that visual attributes patterned after a data attribute with 
+#None as an entry will take on the default visual settings
 
 
 #if you ever want to get data out of the Graph, use nodeGet and/or edgeGet
