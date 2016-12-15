@@ -23,7 +23,7 @@ code{ g = parse(edgefile='example_edges.txt', nodefile='example_nodes.txt')}
 #Your files should include a line 1 header detailing the names of the data attributes of
 #the file. An edgefile header must start with 'source' followed by 'target' followed optionally by other data attributes (separated by
 #delimiter). A nodefile header must start with 'ID' followed optionally by other data attributes.
-```
+
 
 #If you want to do your own analysis on the example files, construct a dictionary whose keys are either node or edge IDs
 #(an edge ID is a string that looks like this: 'node1_;_node2' where node1 and 2 are in alphabetical order if the graph is undirected. 
@@ -92,7 +92,7 @@ g.default() #shows the current default settings
 #if you ever want to get data out of the Graph, use nodeGet and/or edgeGet
 g.nodeGet('Team') #returns a dictionary describing the Team of each node.
 g.edgeGet('weight')
-
+```
 
 
 
