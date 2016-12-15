@@ -14,7 +14,7 @@ This quickstart guide will take you through the core commands of Mission Control
 from missionControl import *
 
 g = parse(edgefile='example_edges.txt', nodefile='example_nodes.txt') 
-#this returns a Graph object constructed out of the data from the given files. The example files are formatted properly.
+\#this returns a Graph object constructed out of the data from the given files. The example files are formatted properly.
 #the delimiter can be changed using the delimiter argument (defaults to '\t')
 #Your files should include a line 1 header detailing the names of the data attributes of
 #the file. An edgefile header must start with 'source' followed by 'target' followed optionally by other data attributes (separated by
