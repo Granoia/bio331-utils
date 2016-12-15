@@ -10,7 +10,7 @@ properly. If you want to add your own data attributes to a graph, the best way i
 analysis for you and compiles it into a dictionary. Then the visualization can be done in an interactive session from that script. 
 
 This quickstart guide will take you through the core commands of Mission Control. First, set up a script with the following commands:
-'''python
+```python
 from missionControl import *
 
 code{ g = parse(edgefile='example_edges.txt', nodefile='example_nodes.txt')}
@@ -18,12 +18,12 @@ code{ g = parse(edgefile='example_edges.txt', nodefile='example_nodes.txt')}
 
 
 
-this returns a Graph object constructed out of the data from the given files. The example files are formatted properly.
-the delimiter can be changed using the delimiter argument (defaults to '\t')
-Your files should include a line 1 header detailing the names of the data attributes of
-the file. An edgefile header must start with 'source' followed by 'target' followed optionally by other data attributes (separated by
-delimiter). A nodefile header must start with 'ID' followed optionally by other data attributes.
-'''
+#this returns a Graph object constructed out of the data from the given files. The example files are formatted properly.
+#the delimiter can be changed using the delimiter argument (defaults to '\t')
+#Your files should include a line 1 header detailing the names of the data attributes of
+#the file. An edgefile header must start with 'source' followed by 'target' followed optionally by other data attributes (separated by
+#delimiter). A nodefile header must start with 'ID' followed optionally by other data attributes.
+```
 
 #If you want to do your own analysis on the example files, construct a dictionary whose keys are either node or edge IDs
 #(an edge ID is a string that looks like this: 'node1_;_node2' where node1 and 2 are in alphabetical order if the graph is undirected. 
